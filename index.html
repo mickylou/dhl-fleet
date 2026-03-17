@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DHL Fleet">
+<meta name="theme-color" content="#F0C000">
+<title>Fleet Management DHL</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px}
+.phone{background:#1a1a1a;border-radius:32px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.05)}
+.screen{display:none;flex-direction:column;min-height:600px}
+.screen.active{display:flex}
+#screen-login{padding:32px 24px;align-items:center}
+.app-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:#F0C000;letter-spacing:1px;margin:12px 0 4px;text-align:center}
+.app-sub{font-size:13px;color:#888;margin-bottom:28px;text-align:center}
+.admins-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.admin-card{position:relative;border-radius:14px;overflow:hidden;cursor:pointer;aspect-ratio:1.3/1;transition:transform .15s,box-shadow .15s;background:#252525}
+.admin-card:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(240,192,0,.3)}
+.admin-card:active{transform:scale(0.97)}
+.admin-img{width:100%;height:100%;object-fit:cover;display:block}
+.admin-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:42px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:#F0C000}
+.admin-label{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:18px 10px 8px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#F0C000;letter-spacing:.5px}
+.topbar{background:#111;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #F0C000;flex-shrink:0}
+.t-avatar{width:28px;height:28px;border-radius:50%;border:2px solid #F0C000;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#F0C000;font-size:12px;background:#333;flex-shrink:0}
+.t-name{font-size:12px;color:#F0C000;font-family:'Barlow Condensed',sans-serif;font-weight:600}
+.t-btn{background:none;border:1px solid #444;color:#888;padding:4px 9px;border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s}
+.t-btn:hover{border-color:#ff4444;color:#ff4444}
+.main-tabs{display:flex;background:#0d0d0d;flex-shrink:0;overflow-x:auto}
+.main-tab{flex:1;min-width:56px;padding:9px 3px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;color:#555;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.3px;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.main-tab.active{color:#F0C000;border-bottom-color:#F0C000}
+.main-tab:hover:not(.active){color:#aaa}
+.tab-content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin;scrollbar-color:#333 transparent}
+.tab-content::-webkit-scrollbar{width:3px}
+.tab-content::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+.sec-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:#F0C000;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.card{background:#252525;border-radius:10px;padding:13px;border:1px solid #2e2e2e;margin-bottom:10px}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.metric-card{background:#252525;border-radius:10px;padding:12px;border:1px solid #2e2e2e;text-align:center}
+.metric-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:#F0C000;line-height:1}
+.metric-val.ok{color:#1D9E75}
+.metric-val.bad{color:#CC0000}
+.metric-lbl{font-size:11px;color:#666;margin-top:3px}
+.form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+.fg label{font-size:11px;color:#888;font-weight:500}
+.fi{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;font-size:13px;color:#fff;width:100%;font-family:'Barlow',sans-serif;transition:border .15s}
+.fi:focus{outline:none;border-color:#F0C000}
+.fi::placeholder{color:#555}
+select.fi option{background:#1a1a1a}
+.btn{padding:8px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s;border:none;letter-spacing:.4px;text-transform:uppercase}
+.btn-y{background:#F0C000;color:#1a1a1a}
+.btn-y:hover{background:#ffd000}
+.btn-g{background:#1a1a1a;color:#888;border:1px solid #444}
+.btn-g:hover{border-color:#F0C000;color:#F0C000}
+.btn-r{background:none;border:1px solid #ff4444;color:#ff4444}
+.btn-r:hover{background:#ff444422}
+.btn-full{width:100%;margin-top:6px}
+.dtable{width:100%;border-collapse:collapse;font-size:12px}
+.dtable th{text-align:left;padding:8px 10px;border-bottom:1px solid #333;font-weight:600;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.dtable td{padding:7px 10px;border-bottom:1px solid #222}
+.dtable tr:last-child td{border-bottom:none}
+.dtable tr:hover td{background:#2a2a2a}
+.badge{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
+.b-ok{background:#0F6E5622;color:#1D9E75}
+.b-warn{background:#E8A00022;color:#E8A000}
+.b-bad{background:#CC000022;color:#ff4444}
+.list-item{background:#252525;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;border:1px solid #2e2e2e}
+.list-item:hover .ia-wrap{opacity:1}
+.ia-wrap{opacity:0;display:flex;gap:5px;transition:opacity .15s}
+.ia-btn{background:none;border:1px solid #444;color:#888;padding:3px 7px;border-radius:5px;font-size:11px;cursor:pointer;transition:all .15s}
+.ia-btn:hover{border-color:#F0C000;color:#F0C000}
+.ia-btn.del:hover{border-color:#ff4444;color:#ff4444}
+.num-badge{background:#F0C000;color:#1a1a1a;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:5px;min-width:28px;text-align:center}
+.chart-wrap{position:relative;width:100%;height:200px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+.overlay.open{display:flex}
+.modal{background:#1e1e1e;border-radius:14px;padding:20px;width:100%;max-width:380px;border:1px solid #333;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:#F0C000;margin-bottom:14px;text-transform:uppercase}
+.modal-btns{display:flex;gap:8px;margin-top:14px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#F0C000;color:#1a1a1a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;padding:9px 18px;border-radius:10px;z-index:300;transition:transform .3s;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.search-bar{background:#252525;border:1px solid #333;border-radius:8px;padding:8px 11px;font-size:13px;color:#fff;width:100%;margin-bottom:10px;font-family:'Barlow',sans-serif;transition:border .15s}
+.search-bar:focus{outline:none;border-color:#F0C000}
+.search-bar::placeholder{color:#555}
+.van-cb-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.vcb-label{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #333;border-radius:7px;cursor:pointer;font-size:12px;color:#aaa;transition:all .15s}
+.vcb-label:has(input:checked){border-color:#F0C000;color:#F0C000;background:#F0C00011}
+.vcb-label input{width:auto;cursor:pointer}
+/* REPORT */
+.report-body{background:#fff;border-radius:10px;padding:20px;color:#111;font-family:'Barlow',sans-serif;font-size:12px}
+.r-h1{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#CC0000;letter-spacing:1px}
+.r-h2{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:#CC0000;border-bottom:2px solid #CC0000;padding-bottom:4px;margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px}
+.r-sub{font-size:11px;color:#888;margin-bottom:10px}
+.r-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.r-stat{border:1px solid #ddd;border-radius:6px;padding:7px;text-align:center}
+.r-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:#111}
+.r-stat-lbl{font-size:9px;color:#888;margin-top:2px}
+.report-body table{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px}
+.report-body th{background:#f5f5f5;padding:5px 6px;border:1px solid #ddd;text-align:left;font-weight:600;font-size:9px;text-transform:uppercase;color:#555}
+.report-body td{padding:5px 6px;border:1px solid #ddd}
+.report-body tr:nth-child(even) td{background:#fafafa}
+.r-chart-wrap{height:150px;position:relative;margin:8px 0}
+.hidden-file{display:none}
+@media print{
+  body{background:#fff!important;padding:0}
+  .phone{border-radius:0;box-shadow:none;max-width:100%;min-width:100%}
+  .topbar,.main-tabs,.no-print,.overlay,.toast{display:none!important}
+  .screen{display:flex!important}
+  .tab-content{display:none!important}
+  #tab-rapport{display:block!important;padding:0}
+  .report-body{padding:8px}
+}
+</style>
+</head>
+<body>
+<div class="phone">
+
+<!-- LOGIN -->
+<div class="screen active" id="screen-login">
+  <div style="padding:32px 24px;display:flex;flex-direction:column;align-items:center;flex:1">
+    <svg width="160" viewBox="0 0 245 80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="245" height="80" rx="8" fill="#CC0000"/>
+      <text x="122" y="58" font-family="Arial Black,sans-serif" font-size="52" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+      <polygon points="0,62 30,62 18,80 0,80" fill="#FFCC00"/>
+      <polygon points="35,62 245,62 245,80 23,80" fill="#FFCC00"/>
+    </svg>
+    <div class="app-title">Fleet Management DHL</div>
+    <div class="app-sub">Contrôle quotidien de flotte</div>
+    <div class="admins-grid" id="admins-grid"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="screen" id="screen-app">
+  <div class="topbar">
+    <svg width="64" viewBox="0 0 245 80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="245" height="80" rx="6" fill="#CC0000"/>
+      <text x="122" y="56" font-family="Arial Black,sans-serif" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+      <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/>
+      <polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/>
+    </svg>
+    <div style="display:flex;align-items:center;gap:7px">
+      <div class="t-avatar" id="t-avatar"></div>
+      <span class="t-name" id="t-name"></span>
+    </div>
+    <button class="t-btn" onclick="logout()">⏏ Quitter</button>
+  </div>
+  <div class="main-tabs" id="main-tabs">
+    <div class="main-tab active" data-tab="dashboard">Tableau</div>
+    <div class="main-tab" data-tab="saisie">Saisie</div>
+    <div class="main-tab" data-tab="flotte">Flotte</div>
+    <div class="main-tab" data-tab="coursiers">Coursiers</div>
+    <div class="main-tab" data-tab="admins">Admins</div>
+    <div class="main-tab" data-tab="rapport">Rapports</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="tab-content" id="tab-dashboard">
+    <div class="sec-title">Tableau de bord</div>
+    <div class="metric-grid" id="db-metrics"></div>
+    <div class="card">
+      <div style="font-size:11px;color:#888;margin-bottom:8px">Évolution autonomie — 7 derniers jours</div>
+      <div class="chart-wrap"><canvas id="chart-overview"></canvas></div>
+    </div>
+    <div class="sec-title">Dernières saisies</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="dtable" id="db-recent"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- SAISIE -->
+  <div class="tab-content" id="tab-saisie" style="display:none">
+    <div class="sec-title">Saisie journalière</div>
+    <div class="card">
+      <div class="form-row">
+        <div class="fg"><label>Date</label><input type="date" class="fi" id="s-date"></div>
+        <div class="fg"><label>Camionnette</label><select class="fi" id="s-van"></select></div>
+      </div>
+      <!-- Toggle non utilisé -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:9px 12px;background:#1a1a1a;border-radius:8px;border:1px solid #333">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex:1">
+          <div style="position:relative;width:36px;height:20px;flex-shrink:0">
+            <input type="checkbox" id="s-parked" onchange="toggleParked(this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+            <div id="s-parked-track" style="position:absolute;inset:0;background:#333;border-radius:10px;transition:background .2s"></div>
+            <div id="s-parked-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#888;border-radius:50%;transition:all .2s"></div>
+          </div>
+          <span style="font-size:12px;color:#aaa" id="s-parked-label">Véhicule non utilisé ce jour</span>
+        </label>
+      </div>
+      <div id="s-active-fields">
+        <div class="form-row">
+          <div class="fg"><label>Chauffeur du jour</label><select class="fi" id="s-driver"></select></div>
+          <div class="fg"><label>Autonomie estimée (km)</label><input type="number" class="fi" id="s-range" placeholder="ex: 180" min="0" max="999"></div>
+        </div>
+      </div>
+      <button class="btn btn-y btn-full" onclick="addEntry()">Enregistrer la saisie</button>
+    </div>
+    <div class="sec-title">Saisies enregistrées</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="dtable">
+        <thead><tr><th>Date</th><th>Van</th><th>Chauffeur</th><th>km</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="entries-tbody"></tbody>
+      </table>
+      <div id="entries-empty" style="padding:20px;text-align:center;color:#555;font-size:13px;display:none">Aucune saisie.</div>
+    </div>
+  </div>
+
+  <!-- FLOTTE -->
+  <div class="tab-content" id="tab-flotte" style="display:none">
+    <div class="sec-title">Camionnettes</div>
+    <div class="card">
+      <div class="form-row">
+        <div class="fg"><label>Immatriculation / Nom</label><input type="text" class="fi" id="van-name" placeholder="ex: VAN-01"></div>
+        <div class="fg"><label>Autonomie nominale (km)</label><input type="number" class="fi" id="van-nominal" placeholder="ex: 250"></div>
+      </div>
+      <button class="btn btn-y btn-full" onclick="addVan()">+ Ajouter camionnette</button>
+    </div>
+    <div id="van-list"></div>
+    <div class="card" style="margin-top:10px;border-color:#333;background:#1e1e1e">
+      <div style="font-size:12px;color:#888;line-height:1.5">💡 <strong style="color:#F0C000">Les chauffeurs = les coursiers.</strong><br>Gérez la liste des chauffeurs disponibles depuis l'onglet <strong style="color:#F0C000">Coursiers</strong>.</div>
+    </div>
+  </div>
+
+  <!-- COURSIERS -->
+  <div class="tab-content" id="tab-coursiers" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="sec-title" style="margin-bottom:0">Coursiers</div>
+      <span id="coursiers-count" style="font-size:11px;color:#666"></span>
+    </div>
+    <input class="search-bar" id="coursiers-search" placeholder="🔍 Rechercher..." oninput="renderCoursiers()">
+    <div id="coursiers-list"></div>
+    <button class="btn btn-y btn-full" onclick="openModal('modal-add-c')" style="margin-top:4px">+ Ajouter un coursier</button>
+  </div>
+
+  <!-- ADMINS -->
+  <div class="tab-content" id="tab-admins" style="display:none">
+    <div class="sec-title">Administrateurs</div>
+    <div id="admins-list"></div>
+    <div class="sec-title" style="margin-top:8px">Ajouter un admin</div>
+    <div class="card">
+      <div class="fg" style="margin-bottom:8px"><label>Prénom</label><input type="text" class="fi" id="new-admin-name" placeholder="ex: Sophie"></div>
+      <button class="btn btn-y btn-full" onclick="addAdmin()">+ Ajouter</button>
+    </div>
+  </div>
+
+  <!-- RAPPORT -->
+  <div class="tab-content" id="tab-rapport" style="display:none">
+    <div class="no-print" style="margin-bottom:12px">
+      <div class="sec-title">Paramètres du rapport</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="fg"><label>Du</label><input type="date" class="fi" id="r-from"></div>
+          <div class="fg"><label>Au</label><input type="date" class="fi" id="r-to"></div>
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:500">CAMIONNETTES</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+          <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(true)">Tout</button>
+          <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(false)">Aucun</button>
+        </div>
+        <div class="van-cb-grid" id="r-van-cbs"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-y" onclick="generateReport()">Générer le rapport</button>
+          <button class="btn btn-g" id="btn-print" style="display:none" onclick="window.print()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+    </div>
+    <div id="report-output"></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="modal-edit-entry">
+  <div class="modal">
+    <div class="modal-title">Modifier la saisie</div>
+    <div class="fg" style="margin-bottom:8px"><label>Autonomie (km)</label><input type="number" class="fi" id="ee-range" style="width:100%"></div>
+    <div class="fg"><label>Chauffeur</label><select class="fi" id="ee-driver" style="width:100%"></select></div>
+    <div class="modal-btns">
+      <button class="btn btn-y" onclick="saveEditEntry()">Enregistrer</button>
+      <button class="btn btn-g" onclick="closeModal('modal-edit-entry')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-title">Confirmer</div>
+    <div style="color:#aaa;font-size:13px;margin-bottom:4px" id="confirm-msg"></div>
+    <div class="modal-btns">
+      <button class="btn btn-r" onclick="confirmDeleteFn()">Supprimer</button>
+      <button class="btn btn-g" onclick="closeModal('modal-confirm')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-add-c">
+  <div class="modal">
+    <div class="modal-title">Ajouter un coursier</div>
+    <div class="fg" style="margin-bottom:8px"><label>Prénom</label><input type="text" class="fi" id="ac-fn" style="width:100%" placeholder="Prénom"></div>
+    <div class="fg" style="margin-bottom:8px"><label>Nom</label><input type="text" class="fi" id="ac-ln" style="width:100%" placeholder="NOM"></div>
+    <div class="fg"><label>Code</label><input type="text" class="fi" id="ac-code" style="width:100%" value="FL"></div>
+    <div class="modal-btns">
+      <button class="btn btn-y" onclick="saveAddCoursier()">Ajouter</button>
+      <button class="btn btn-g" onclick="closeModal('modal-add-c')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-edit-c">
+  <div class="modal">
+    <div class="modal-title" id="modal-edit-c-title">Modifier</div>
+    <div class="fg" style="margin-bottom:8px"><label>Prénom</label><input type="text" class="fi" id="ec-fn" style="width:100%"></div>
+    <div class="fg" style="margin-bottom:8px"><label>Nom</label><input type="text" class="fi" id="ec-ln" style="width:100%"></div>
+    <div class="fg"><label>Code</label><input type="text" class="fi" id="ec-code" style="width:100%"></div>
+    <div class="modal-btns">
+      <button class="btn btn-y" onclick="saveEditCoursier()">Enregistrer</button>
+      <button class="btn btn-g" onclick="closeModal('modal-edit-c')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-photo">
+  <div class="modal">
+    <div class="modal-title" id="photo-modal-title">Photo de profil</div>
+    <div style="font-size:13px;color:#888;margin-bottom:12px">Choisissez une photo depuis votre appareil</div>
+    <input type="file" class="hidden-file" id="photo-file" accept="image/*" onchange="handlePhoto(event)">
+    <button class="btn btn-y btn-full" style="margin-bottom:8px" onclick="document.getElementById('photo-file').click()">📷 Choisir une photo</button>
+    <button class="btn btn-g btn-full" onclick="closeModal('modal-photo')">Annuler</button>
+  </div>
+</div>
+
+<!-- PWA INSTALL BANNER -->
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top:2px solid #F0C000;padding:12px 16px;z-index:400;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.5)">
+  <svg width="36" height="36" viewBox="0 0 245 80" style="flex-shrink:0;border-radius:6px">
+    <rect width="245" height="80" rx="6" fill="#CC0000"/>
+    <text x="122" y="56" font-family="Arial Black,sans-serif" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+    <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/>
+  </svg>
+  <div style="flex:1">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#F0C000">Installer l'application</div>
+    <div style="font-size:11px;color:#888;margin-top:1px">Accès rapide depuis votre écran d'accueil</div>
+  </div>
+  <button onclick="installApp()" style="background:#F0C000;color:#1a1a1a;border:none;padding:8px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">📲 Installer</button>
+  <button onclick="document.getElementById('install-banner').style.display='none'" style="background:none;border:1px solid #444;color:#888;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">✕</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== INITIAL DATA =====
+const INIT_COURSIERS=[
+  {id:'c1',fn:'Adriano',ln:'CUSCITO',code:'FL'},
+  {id:'c2',fn:'Adriano',ln:'DI COSTANZA',code:'FL'},
+  {id:'c3',fn:'Alessandro',ln:'MORETTI',code:'FL'},
+  {id:'c4',fn:'Alexis',ln:'ROBINSKI',code:'FL'},
+  {id:'c5',fn:'Anthony',ln:'CORVONAT',code:'FL'},
+  {id:'c6',fn:'Ayhan',ln:'HAMDI',code:'FL'},
+  {id:'c7',fn:'Christophe',ln:'BASSO',code:'FL'},
+  {id:'c8',fn:'Ibrahim',ln:'MASRIYEH',code:'FL'},
+  {id:'c9',fn:'Ilias',ln:'EL BOUSTINI',code:'FL'},
+  {id:'c10',fn:'Jacques',ln:'GORREVOD',code:'FL'},
+  {id:'c11',fn:'Jason',ln:'DE ROO',code:'FL'},
+  {id:'c12',fn:'Jean',ln:'DE COEN',code:'FL'},
+  {id:'c13',fn:'Joffroy',ln:'TARIN',code:'FL'},
+  {id:'c14',fn:'Marina',ln:'ROTONDO',code:'FL'},
+  {id:'c15',fn:'Maxime',ln:'ROMBAUX',code:'FL'},
+  {id:'c16',fn:'Michael',ln:'LOUVIAU',code:'FL'},
+  {id:'c17',fn:'Michael',ln:'PIERROT',code:'FL'},
+  {id:'c18',fn:'Moussa',ln:'MOUFAKKIR',code:'FL'},
+  {id:'c19',fn:'Nabil',ln:'ABBAR',code:'FL'},
+  {id:'c20',fn:'Nicolas',ln:'BEAUTRY',code:'FL'},
+  {id:'c21',fn:'Olivier',ln:'COPIN',code:'FL'},
+  {id:'c22',fn:'Patrick',ln:'PAQUET',code:'FL'},
+  {id:'c23',fn:'Pietro',ln:'VITALE',code:'FL'},
+  {id:'c24',fn:'Rida',ln:'EL HYANI',code:'FL'},
+  {id:'c25',fn:'Ridouane',ln:'ABOULAID',code:'FL'},
+  {id:'c26',fn:'Steve',ln:'GUEUFFEN',code:'FL'},
+  {id:'c27',fn:'Violaine',ln:'PESTIAUX',code:'FL'},
+];
+const INIT_ADMINS=[
+  {id:'a1',name:'Mike',initials:'MI',photo:null},
+  {id:'a2',name:'Steve',initials:'ST',photo:null},
+  {id:'a3',name:'Rachel',initials:'RA',photo:null},
+  {id:'a4',name:'Erwin',initials:'ER',photo:null},
+];
+const INIT_VANS=[
+  {id:'van1',name:'2-CSU-502',nominal:250},
+  {id:'van2',name:'2-DAC-691',nominal:250},
+  {id:'van3',name:'2-CXH-859',nominal:250},
+  {id:'van4',name:'2-CQW-917',nominal:250},
+  {id:'van5',name:'2-CQW-962',nominal:250},
+  {id:'van6',name:'2-CTM-138',nominal:250},
+  {id:'van7',name:'2-CXH-819',nominal:250},
+];
+
+let S={coursiers:[],admins:[],vans:[],entries:[],currentAdmin:null,lastMod:'—'};
+let editEntryId=null,deleteFn=null,editCoursierId=null,photoAdminId=null;
+let overviewChart=null;
+const rCharts={};
+
+function loadState(){
+  try{
+    const saved=localStorage.getItem('dhl-full-v1');
+    if(saved){
+      const d=JSON.parse(saved);
+      S.coursiers=d.coursiers||clone(INIT_COURSIERS);
+      S.admins=d.admins||clone(INIT_ADMINS);
+      S.vans=d.vans&&d.vans.length?d.vans:clone(INIT_VANS);
+      S.entries=d.entries||[];
+      S.lastMod=d.lastMod||'—';
+    }else{
+      S.coursiers=clone(INIT_COURSIERS);
+      S.admins=clone(INIT_ADMINS);
+      S.vans=clone(INIT_VANS);
+    }
+  }catch(e){S.coursiers=clone(INIT_COURSIERS);S.admins=clone(INIT_ADMINS);S.vans=clone(INIT_VANS);}
+  renderLogin();
+}
+
+function saveState(msg){
+  S.lastMod=(S.currentAdmin?.name||'?')+' — '+new Date().toLocaleDateString('fr-BE');
+  try{localStorage.setItem('dhl-full-v1',JSON.stringify(S));}catch(e){}
+  if(msg) toast(msg);
+}
+
+function clone(x){return JSON.parse(JSON.stringify(x));}
+function today(){return new Date().toISOString().split('T')[0];}
+function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
+function fmt(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
+function sortByName(arr,fn){return[...arr].sort((a,b)=>fn(a)<fn(b)?-1:fn(a)>fn(b)?1:0);}
+
+function getStatus(km,nominal){
+  if(!km||!nominal)return'ok';
+  const p=km/nominal;
+  if(p>=0.8)return'ok';
+  if(p>=0.6)return'warn';
+  return'bad';
+}
+function statusLabel(s){return s==='ok'?'Bon':s==='warn'?'Moyen':'Faible';}
+function statusColor(s){return s==='ok'?'#1D9E75':s==='warn'?'#E8A000':'#CC0000';}
+function pct(km,nom){return nom?Math.round((km/nom)*100):0;}
+
+function driverJ2(vanId,date){
+  const d2=addDays(date,-2);
+  const e=S.entries.find(x=>x.vanId===vanId&&x.date===d2&&!x.parked);
+  if(!e)return null;
+  return S.coursiers.find(c=>c.id===e.driverId)||null;
+}
+
+// helper: display name of a coursier by id
+function coursierName(id){
+  if(!id)return'—';
+  const c=S.coursiers.find(x=>x.id===id);
+  return c?`${c.fn} ${c.ln}`:'—';
+}
+
+// === LOGIN ===
+function renderLogin(){
+  document.getElementById('admins-grid').innerHTML=S.admins.map(a=>`
+    <div class="admin-card" onclick="login('${a.id}')">
+      ${a.photo?`<img class="admin-img" src="${a.photo}">`:`<div class="admin-placeholder">${(a.initials||a.name[0]).toUpperCase()}</div>`}
+      <div class="admin-label">${a.name}</div>
+    </div>`).join('');
+}
+
+function login(id){
+  S.currentAdmin=S.admins.find(a=>a.id===id);
+  if(!S.currentAdmin)return;
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  const av=document.getElementById('t-avatar');
+  av.innerHTML=S.currentAdmin.photo?`<img src="${S.currentAdmin.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(S.currentAdmin.initials||S.currentAdmin.name[0]);
+  document.getElementById('t-name').textContent=S.currentAdmin.name;
+  document.getElementById('s-date').value=today();
+  switchTab('dashboard');
+}
+
+function logout(){
+  S.currentAdmin=null;
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('screen-login').classList.add('active');
+}
+
+// === TABS ===
+document.getElementById('main-tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.main-tab');
+  if(t)switchTab(t.dataset.tab);
+});
+
+function switchTab(tab){
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  ['dashboard','saisie','flotte','coursiers','admins','rapport'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'':'none';
+  });
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='saisie'){renderEntries();populateSaisieSelects();}
+  if(tab==='flotte')renderVanList();
+  if(tab==='coursiers')renderCoursiers();
+  if(tab==='admins')renderAdmins();
+  if(tab==='rapport')renderReportControls();
+}
+
+// === DASHBOARD ===
+function renderDashboard(){
+  const tod=today();
+  const todE=S.entries.filter(e=>e.date===tod&&!e.parked);
+  let avgKm='—',alertCount=0;
+  if(todE.length){
+    const avg=todE.reduce((s,e)=>s+e.range,0)/todE.length;
+    avgKm=Math.round(avg)+' km';
+    todE.forEach(e=>{const v=S.vans.find(v=>v.id===e.vanId);if(v&&getStatus(e.range,v.nominal)==='bad')alertCount++;});
+  }
+  const last7=[];
+  for(let i=6;i>=0;i--){
+    const d=addDays(tod,-i),de=S.entries.filter(e=>e.date===d&&!e.parked);
+    if(de.length)last7.push(de.reduce((s,e)=>s+e.range,0)/de.length);
+  }
+  let trend='—',trendClass='';
+  if(last7.length>=2){const diff=Math.round(last7[last7.length-1]-last7[0]);trend=(diff>=0?'+':'')+diff+' km';trendClass=diff>=0?'ok':'bad';}
+  document.getElementById('db-metrics').innerHTML=`
+    <div class="metric-card"><div class="metric-val">${S.vans.length}</div><div class="metric-lbl">Camionnettes</div></div>
+    <div class="metric-card"><div class="metric-val">${avgKm}</div><div class="metric-lbl">Autonomie moy. aujourd'hui</div></div>
+    <div class="metric-card"><div class="metric-val ${trendClass}">${trend}</div><div class="metric-lbl">Tendance 7 jours</div></div>
+    <div class="metric-card"><div class="metric-val ${alertCount>0?'bad':'ok'}">${alertCount}</div><div class="metric-lbl">Alertes faible autonomie</div></div>`;
+
+  const labels=[],datasets=[];
+  for(let i=6;i>=0;i--)labels.push(fmt(addDays(tod,-i)));
+  const cols=['#F0C000','#1D9E75','#378ADD','#E8A000','#D85A30','#8B5CF6'];
+  S.vans.slice(0,6).forEach((van,idx)=>{
+    const data=[];
+    for(let i=6;i>=0;i--){
+      const d=addDays(tod,-i);
+      const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&!x.parked);
+      data.push(e?e.range:null);
+    }
+    datasets.push({label:van.name,data,borderColor:cols[idx%6],backgroundColor:cols[idx%6]+'22',tension:0.3,spanGaps:false,pointRadius:3});
+  });
+  if(overviewChart)overviewChart.destroy();
+  const ctx=document.getElementById('chart-overview').getContext('2d');
+  overviewChart=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#aaa',font:{size:10},boxWidth:10}}},scales:{y:{ticks:{color:'#666',font:{size:10}},grid:{color:'#333'}},x:{ticks:{color:'#666',font:{size:10}},grid:{color:'#2a2a2a'}}}}});
+
+  const recent=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const tbl=document.getElementById('db-recent');
+  if(!recent.length){tbl.innerHTML='<thead></thead><tbody><tr><td colspan="5" style="text-align:center;padding:20px;color:#555">Aucune saisie.</td></tr></tbody>';return;}
+  tbl.innerHTML='<thead><tr><th>Date</th><th>Van</th><th>Chauffeur</th><th>km</th><th>Statut</th></tr></thead><tbody>'
+    +recent.map(e=>{
+      const v=S.vans.find(x=>x.id===e.vanId);
+      if(e.parked) return`<tr><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td colspan="2" style="color:#666;font-style:italic">Non utilisé</td><td><span class="badge" style="background:#33333366;color:#888">Inactif</span></td></tr>`;
+      const st=getStatus(e.range,v?.nominal);
+      return`<tr><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td>${coursierName(e.driverId)}</td><td>${e.range}</td><td><span class="badge b-${st}">${statusLabel(st)}</span></td></tr>`;
+    }).join('')+'</tbody>';
+}
+
+// === SAISIE ===
+function toggleParked(checked){
+  const track=document.getElementById('s-parked-track');
+  const thumb=document.getElementById('s-parked-thumb');
+  const label=document.getElementById('s-parked-label');
+  const fields=document.getElementById('s-active-fields');
+  if(checked){
+    track.style.background='#F0C000';
+    thumb.style.background='#1a1a1a';
+    thumb.style.left='18px';
+    label.style.color='#F0C000';
+    fields.style.display='none';
+  }else{
+    track.style.background='#333';
+    thumb.style.background='#888';
+    thumb.style.left='2px';
+    label.style.color='#aaa';
+    fields.style.display='';
+  }
+}
+
+function populateSaisieSelects(){
+  const vs=document.getElementById('s-van');
+  const ds=document.getElementById('s-driver');
+  vs.innerHTML='<option value="">-- Camionnette --</option>'+S.vans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  ds.innerHTML='<option value="">-- Chauffeur --</option>'+sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}">${c.fn} ${c.ln}</option>`).join('');
+}
+
+function addEntry(){
+  const date=document.getElementById('s-date').value;
+  const vanId=document.getElementById('s-van').value;
+  const parked=document.getElementById('s-parked').checked;
+  if(!date||!vanId)return toast('Sélectionnez une date et une camionnette');
+  if(!parked){
+    const driverId=document.getElementById('s-driver').value;
+    const range=parseFloat(document.getElementById('s-range').value);
+    if(!driverId||!range)return toast('Remplissez chauffeur et autonomie');
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId,range,parked:false});
+  }else{
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range:null,parked:true});
+  }
+  S.entries.sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('s-range').value='';
+  document.getElementById('s-van').value='';
+  document.getElementById('s-driver').value='';
+  // reset toggle
+  document.getElementById('s-parked').checked=false;
+  toggleParked(false);
+  saveState('Saisie enregistrée');
+  renderEntries();
+}
+
+function renderEntries(){
+  const tbody=document.getElementById('entries-tbody'),empty=document.getElementById('entries-empty');
+  if(!S.entries.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=S.entries.slice(0,60).map(e=>{
+    const v=S.vans.find(x=>x.id===e.vanId);
+    const del=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!==\'${e.id}\');saveState('Supprimé');renderEntries()})">✕</button>`;
+    if(e.parked){
+      return`<tr style="opacity:.65"><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td colspan="2" style="color:#666;font-style:italic">🅿 Non utilisé</td><td><span class="badge" style="background:#2a2a2a;color:#666;border:1px solid #333">Inactif</span></td>
+      <td><div style="display:flex;gap:4px">${del}</div></td></tr>`;
+    }
+    const st=getStatus(e.range,v?.nominal);
+    return`<tr><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td>${coursierName(e.driverId)}</td><td>${e.range}</td><td><span class="badge b-${st}">${statusLabel(st)}</span></td>
+    <td><div style="display:flex;gap:4px"><button class="ia-btn" onclick="openEditEntry('${e.id}')">✎</button>${del}</div></td></tr>`;
+  }).join('');
+}
+
+function openEditEntry(id){
+  editEntryId=id;const e=S.entries.find(x=>x.id===id);if(!e||e.parked)return;
+  document.getElementById('ee-range').value=e.range;
+  document.getElementById('ee-driver').innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}" ${c.id===e.driverId?'selected':''}>${c.fn} ${c.ln}</option>`).join('');
+  openModal('modal-edit-entry');
+}
+function saveEditEntry(){
+  const e=S.entries.find(x=>x.id===editEntryId);if(!e)return;
+  e.range=parseFloat(document.getElementById('ee-range').value)||e.range;
+  e.driverId=document.getElementById('ee-driver').value||e.driverId;
+  closeModal('modal-edit-entry');saveState('Saisie modifiée');renderEntries();
+}
+
+// === FLOTTE (vans only) ===
+function addVan(){
+  const name=document.getElementById('van-name').value.trim(),nominal=parseInt(document.getElementById('van-nominal').value)||250;
+  if(!name)return toast('Entrez un nom');
+  S.vans.push({id:'v'+Date.now(),name,nominal});
+  document.getElementById('van-name').value='';document.getElementById('van-nominal').value='';
+  saveState('Camionnette ajoutée');renderVanList();
+}
+function renderVanList(){
+  const el=document.getElementById('van-list');
+  if(!S.vans.length){el.innerHTML='<div style="color:#555;font-size:13px;padding:8px">Aucune camionnette.</div>';return;}
+  el.innerHTML=S.vans.map(v=>`<div class="list-item">
+    <div><div style="font-weight:600;font-size:13px;color:#f0f0f0">${v.name}</div><div style="font-size:11px;color:#666">Nominal: ${v.nominal} km</div></div>
+    <div class="ia-wrap" style="opacity:1"><button class="ia-btn del" onclick="openConfirm('Supprimer ${v.name} ?',()=>{S.vans=S.vans.filter(x=>x.id!==\'${v.id}\');saveState('Supprimé');renderVanList()})">✕ Suppr.</button></div>
+  </div>`).join('');
+}
+// === COURSIERS ===
+function sortedCoursiers(list){
+  return[...list].sort((a,b)=>{const fa=a.fn.toLowerCase(),fb=b.fn.toLowerCase();if(fa<fb)return-1;if(fa>fb)return 1;return a.ln.toLowerCase().localeCompare(b.ln.toLowerCase());});
+}
+function renderCoursiers(){
+  const q=(document.getElementById('coursiers-search').value||'').toLowerCase().trim();
+  const list=sortedCoursiers(S.coursiers).filter(c=>!q||c.fn.toLowerCase().includes(q)||c.ln.toLowerCase().includes(q));
+  document.getElementById('coursiers-count').textContent=`${list.length} / ${S.coursiers.length}`;
+  document.getElementById('coursiers-list').innerHTML=list.map((c,i)=>`
+    <div class="list-item">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="num-badge">${String(i+1).padStart(2,'0')}</span>
+        <div><div style="font-size:13px;color:#f0f0f0;font-weight:500">${c.fn} ${c.ln}</div><div style="font-size:11px;color:#666">${c.code}</div></div>
+      </div>
+      <div class="ia-wrap">
+        <button class="ia-btn" onclick="openEditCoursier('${c.id}')">✎</button>
+        <button class="ia-btn del" onclick="openConfirm('Supprimer ${c.fn} ${c.ln} ?',()=>{S.coursiers=S.coursiers.filter(x=>x.id!==\'${c.id}\');saveState('Coursier supprimé');renderCoursiers()})">✕</button>
+      </div>
+    </div>`).join('');
+}
+function saveAddCoursier(){
+  const fn=document.getElementById('ac-fn').value.trim(),ln=document.getElementById('ac-ln').value.trim().toUpperCase(),code=document.getElementById('ac-code').value.trim().toUpperCase()||'FL';
+  if(!fn||!ln)return toast('Remplissez prénom et nom');
+  S.coursiers.push({id:'c'+Date.now(),fn,ln,code});
+  closeModal('modal-add-c');saveState('Coursier ajouté');renderCoursiers();
+}
+function openEditCoursier(id){
+  editCoursierId=id;const c=S.coursiers.find(x=>x.id===id);if(!c)return;
+  document.getElementById('ec-fn').value=c.fn;document.getElementById('ec-ln').value=c.ln;document.getElementById('ec-code').value=c.code;
+  document.getElementById('modal-edit-c-title').textContent='Modifier '+c.fn+' '+c.ln;
+  openModal('modal-edit-c');
+}
+function saveEditCoursier(){
+  const c=S.coursiers.find(x=>x.id===editCoursierId);if(!c)return;
+  c.fn=document.getElementById('ec-fn').value.trim()||c.fn;
+  c.ln=document.getElementById('ec-ln').value.trim().toUpperCase()||c.ln;
+  c.code=document.getElementById('ec-code').value.trim().toUpperCase()||c.code;
+  closeModal('modal-edit-c');saveState('Coursier modifié');renderCoursiers();
+}
+
+// === ADMINS ===
+function renderAdmins(){
+  document.getElementById('admins-list').innerHTML=S.admins.map(a=>`
+    <div class="list-item">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="t-avatar" style="width:36px;height:36px;font-size:14px">
+          ${a.photo?`<img src="${a.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(a.initials||a.name[0])}
+        </div>
+        <div><div style="font-size:13px;color:#f0f0f0;font-weight:600">${a.name}</div><div style="font-size:11px;color:#666">Administrateur</div></div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="ia-btn" onclick="openPhotoModal('${a.id}')">📷</button>
+        ${S.admins.length>1?`<button class="ia-btn del" onclick="deleteAdmin('${a.id}')">✕</button>`:''}
+      </div>
+    </div>`).join('');
+}
+function addAdmin(){
+  const name=document.getElementById('new-admin-name').value.trim();
+  if(!name)return toast('Entrez un prénom');
+  S.admins.push({id:'a'+Date.now(),name,initials:name.slice(0,2).toUpperCase(),photo:null});
+  document.getElementById('new-admin-name').value='';
+  saveState('Admin ajouté');renderAdmins();renderLogin();
+}
+function deleteAdmin(id){
+  if(S.admins.length<=1)return toast('Minimum 1 admin');
+  if(S.currentAdmin?.id===id)return toast('Impossible: compte actif');
+  S.admins=S.admins.filter(a=>a.id!==id);
+  saveState('Admin supprimé');renderAdmins();renderLogin();
+}
+function openPhotoModal(id){
+  photoAdminId=id;const a=S.admins.find(x=>x.id===id);
+  document.getElementById('photo-modal-title').textContent='Photo de '+a?.name;
+  openModal('modal-photo');
+}
+function handlePhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const admin=S.admins.find(a=>a.id===photoAdminId);if(!admin)return;
+    admin.photo=e.target.result;
+    if(S.currentAdmin?.id===photoAdminId){
+      S.currentAdmin.photo=e.target.result;
+      const av=document.getElementById('t-avatar');
+      av.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    }
+    closeModal('modal-photo');saveState('Photo mise à jour');renderAdmins();renderLogin();event.target.value='';
+  };
+  reader.readAsDataURL(file);
+}
+
+// === RAPPORT ===
+function renderReportControls(){
+  document.getElementById('r-from').value=addDays(today(),-30);
+  document.getElementById('r-to').value=today();
+  document.getElementById('r-van-cbs').innerHTML=S.vans.map(v=>`
+    <label class="vcb-label"><input type="checkbox" class="r-van-cb" value="${v.id}" checked style="width:auto">${v.name}</label>`).join('')
+    ||'<span style="font-size:12px;color:#555">Aucune camionnette enregistrée.</span>';
+}
+function selAllVans(val){document.querySelectorAll('.r-van-cb').forEach(cb=>cb.checked=val);}
+
+function generateReport(){
+  const from=document.getElementById('r-from').value,to=document.getElementById('r-to').value;
+  if(!from||!to)return toast('Définissez une période');
+  const selIds=[...document.querySelectorAll('.r-van-cb:checked')].map(c=>c.value);
+  if(!selIds.length)return toast('Sélectionnez au moins une camionnette');
+  Object.values(rCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+  const vans=S.vans.filter(v=>selIds.includes(v.id));
+  // Exclude parked entries from stats
+  const allE=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&!e.parked);
+
+  let html=`<div class="report-body" id="report-body">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;padding-bottom:10px;border-bottom:2px solid #CC0000">
+      <svg width="90" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
+        <text x="122" y="56" font-family="Arial Black,sans-serif" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+        <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/>
+      </svg>
+      <div><div class="r-h1" style="margin:0;border:none">Rapport autonomie — Flotte électrique</div>
+        <div class="r-sub" style="margin:0">Période: ${fmt(from)} au ${fmt(to)} &nbsp;|&nbsp; Généré le ${fmt(today())} par ${S.currentAdmin?.name||'?'}</div>
+      </div>
+    </div>`;
+
+  if(allE.length){
+    const gavg=Math.round(allE.reduce((s,e)=>s+e.range,0)/allE.length);
+    const gmin=allE.reduce((a,b)=>a.range<b.range?a:b);
+    const gmax=allE.reduce((a,b)=>a.range>b.range?a:b);
+    const vmin=S.vans.find(v=>v.id===gmin.vanId),vmax=S.vans.find(v=>v.id===gmax.vanId);
+    html+=`<div class="r-h2">Synthèse globale — ${vans.length} camionnette${vans.length>1?'s':''}</div>
+    <div class="r-stat-grid">
+      <div class="r-stat"><div class="r-stat-val">${gavg} km</div><div class="r-stat-lbl">Moyenne générale</div></div>
+      <div class="r-stat"><div class="r-stat-val" style="color:#CC0000">${gmin.range} km</div><div class="r-stat-lbl">Min (${vmin?.name||'?'})</div></div>
+      <div class="r-stat"><div class="r-stat-val" style="color:#1D9E75">${gmax.range} km</div><div class="r-stat-lbl">Max (${vmax?.name||'?'})</div></div>
+      <div class="r-stat"><div class="r-stat-val">${allE.length}</div><div class="r-stat-lbl">Saisies totales</div></div>
+    </div>`;
+  }else{
+    html+=`<div style="color:#888;font-size:13px;padding:12px 0">Aucune saisie pour cette période.</div>`;
+  }
+
+  vans.forEach(van=>{
+    // All entries for this van in period
+    const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+    const veActive=ve.filter(e=>!e.parked);
+    if(!ve.length)return;
+    const avg=veActive.length?Math.round(veActive.reduce((s,e)=>s+e.range,0)/veActive.length):0;
+    const min=veActive.length?Math.min(...veActive.map(e=>e.range)):0;
+    const max=veActive.length?Math.max(...veActive.map(e=>e.range)):0;
+    const p=pct(avg,van.nominal),st=getStatus(avg,van.nominal);
+    const parkedDays=ve.filter(e=>e.parked).length;
+    html+=`<div class="r-h2">${van.name} &nbsp;—&nbsp; Nominal: ${van.nominal} km</div>
+    <div class="r-stat-grid">
+      <div class="r-stat"><div class="r-stat-val">${avg} km</div><div class="r-stat-lbl">Moyenne</div></div>
+      <div class="r-stat"><div class="r-stat-val" style="color:${statusColor(st)}">${p}%</div><div class="r-stat-lbl">% Nominal</div></div>
+      <div class="r-stat"><div class="r-stat-val" style="color:#CC0000">${min} km</div><div class="r-stat-lbl">Minimum</div></div>
+      <div class="r-stat"><div class="r-stat-val" style="color:#1D9E75">${max} km</div><div class="r-stat-lbl">Maximum</div></div>
+    </div>
+    ${parkedDays>0?`<div style="font-size:10px;color:#888;margin-bottom:6px">🅿 ${parkedDays} jour${parkedDays>1?'s':''} sans utilisation (exclus des stats)</div>`:''}
+    <div class="r-chart-wrap"><canvas id="rc-${van.id}"></canvas></div>
+    <table>
+      <thead><tr><th>Date</th><th>Autonomie</th><th>% Nom.</th><th>Statut</th><th>Chauffeur du jour</th><th>Chauffeur J-2 (responsable)</th></tr></thead>
+      <tbody>${ve.map(e=>{
+        if(e.parked){
+          return`<tr style="background:#f9f9f9;color:#999"><td>${fmt(e.date)}</td><td colspan="4" style="font-style:italic;color:#aaa">🅿 Véhicule non utilisé</td><td style="color:#aaa">—</td></tr>`;
+        }
+        const dr2=driverJ2(van.id,e.date);
+        const p2=pct(e.range,van.nominal),st2=getStatus(e.range,van.nominal),col=statusColor(st2);
+        return`<tr><td>${fmt(e.date)}</td><td><strong>${e.range} km</strong></td><td style="color:${col};font-weight:600">${p2}%</td><td style="color:${col}">${statusLabel(st2)}</td><td>${coursierName(e.driverId)}</td><td style="font-weight:${dr2?'600':'400'};color:${dr2?'#111':'#999'}">${dr2?`${dr2.fn} ${dr2.ln}`:'— (pas de données)'}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  });
+
+  html+='</div>';
+  document.getElementById('report-output').innerHTML=html;
+  document.getElementById('btn-print').style.display='inline-block';
+  toast('Rapport généré');
+
+  setTimeout(()=>{
+    vans.forEach(van=>{
+      const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+      if(!ve.length)return;
+      const ctx=document.getElementById('rc-'+van.id);if(!ctx)return;
+      const labels=ve.map(e=>fmt(e.date));
+      // parked = null (gap in chart), active = value
+      const data=ve.map(e=>e.parked?null:e.range);
+      const bgC=data.map(d=>d===null?'#33333344':getStatus(d,van.nominal)==='ok'?'#1D9E7566':getStatus(d,van.nominal)==='warn'?'#E8A00066':'#CC000066');
+      const bdC=data.map(d=>d===null?'#555555':getStatus(d,van.nominal)==='ok'?'#1D9E75':getStatus(d,van.nominal)==='warn'?'#E8A000':'#CC0000');
+      rCharts[van.id]=new Chart(ctx.getContext('2d'),{
+        type:'bar',
+        data:{labels,datasets:[
+          {type:'line',label:'Nominal',data:ve.map(e=>e.parked?null:van.nominal),borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:0,spanGaps:true},
+          {label:'Autonomie estimée',data,backgroundColor:bgC,borderColor:bdC,borderWidth:1.5,order:1}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{font:{size:10},boxWidth:10}},
+            tooltip:{callbacks:{
+              label:items=>{
+                if(items.dataset.label==='Nominal')return null;
+                const e=ve[items.dataIndex];
+                if(!e)return null;
+                if(e.parked)return'🅿 Non utilisé';
+                return`Autonomie: ${items.raw} km`;
+              },
+              afterBody:items=>{
+                const idx=items[0]?.dataIndex;if(idx===undefined)return[];
+                const e=ve[idx];if(!e||e.parked)return[];
+                const dr2=driverJ2(van.id,e.date);
+                const drNom=coursierName(e.driverId);
+                const lines=[`Chauffeur: ${drNom}`];
+                if(dr2)lines.push(`Chauffeur J-2: ${dr2.fn} ${dr2.ln}`);
+                return lines;
+              }
+            }}
+          },
+          scales:{y:{beginAtZero:false,ticks:{font:{size:10}},title:{display:true,text:'km',font:{size:10}}},x:{ticks:{font:{size:9},maxRotation:45}}}
+        }
+      });
+    });
+  },150);
+}
+
+// === MODAL / UTILS ===
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+function openConfirm(msg,fn){deleteFn=fn;document.getElementById('confirm-msg').textContent=msg;openModal('modal-confirm');}
+function confirmDeleteFn(){if(deleteFn)deleteFn();deleteFn=null;closeModal('modal-confirm');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// === PWA SERVICE WORKER ===
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+// PWA Install prompt
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById('install-banner').style.display='flex';
+});
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('install-banner').style.display='none';
+  deferredPrompt=null;
+});
+function installApp(){
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{
+    deferredPrompt=null;
+    document.getElementById('install-banner').style.display='none';
+  });
+}
+
+// === INIT ===
+loadState();
+</script>
+</body>
+</html>
