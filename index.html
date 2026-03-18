@@ -182,9 +182,14 @@ select.fi option{background:#1a1a1a}
     <div class="sec-title">Saisie journalière</div>
     <div class="card">
       <div class="form-row">
-        <div class="fg"><label>Date</label><input type="date" class="fi" id="s-date"></div>
-        <div class="fg"><label>Camionnette</label><select class="fi" id="s-van"></select></div>
+        <div class="fg"><label>Date</label><input type="date" class="fi" id="s-date" onchange="refreshVanColors()"></div>
+        <div class="fg">
+          <label>Camionnette</label>
+          <select class="fi" id="s-van" onchange="refreshVanColors()"></select>
+        </div>
       </div>
+      <!-- Van status pills -->
+      <div id="van-status-pills" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
       <!-- Toggle non utilisé -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:9px 12px;background:#1a1a1a;border-radius:8px;border:1px solid #333">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex:1">
@@ -196,22 +201,22 @@ select.fi option{background:#1a1a1a}
           <span style="font-size:12px;color:#aaa" id="s-parked-label">Véhicule non utilisé ce jour</span>
         </label>
       </div>
-      <div id="s-active-fields">
-        <div class="form-row">
-          <div class="fg"><label>Chauffeur du jour</label><select class="fi" id="s-driver"></select></div>
-          <div class="fg"><label>Autonomie estimée (km)</label><input type="number" class="fi" id="s-range" placeholder="ex: 180" min="0" max="999"></div>
+      <!-- Chauffeur — masqué si non utilisé -->
+      <div id="s-driver-row" class="form-row" style="margin-bottom:8px">
+        <div class="fg"><label>Chauffeur du jour</label><select class="fi" id="s-driver"></select></div>
+      </div>
+      <!-- KM — toujours visible -->
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="fg">
+          <label id="s-range-label">Autonomie estimée (km)</label>
+          <input type="number" class="fi" id="s-range" placeholder="ex: 180" min="0" max="999">
         </div>
       </div>
       <button class="btn btn-y btn-full" onclick="addEntry()">Enregistrer la saisie</button>
     </div>
     <div class="sec-title">Saisies enregistrées</div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <table class="dtable">
-        <thead><tr><th>Date</th><th>Van</th><th>Chauffeur</th><th>km</th><th>Statut</th><th></th></tr></thead>
-        <tbody id="entries-tbody"></tbody>
-      </table>
-      <div id="entries-empty" style="padding:20px;text-align:center;color:#555;font-size:13px;display:none">Aucune saisie.</div>
-    </div>
+    <div id="entries-list"></div>
+    <div id="entries-empty" style="padding:20px;text-align:center;color:#555;font-size:13px;display:none">Aucune saisie.</div>
   </div>
 
   <!-- FLOTTE -->
@@ -281,8 +286,8 @@ select.fi option{background:#1a1a1a}
 <div class="overlay" id="modal-edit-entry">
   <div class="modal">
     <div class="modal-title">Modifier la saisie</div>
-    <div class="fg" style="margin-bottom:8px"><label>Autonomie (km)</label><input type="number" class="fi" id="ee-range" style="width:100%"></div>
-    <div class="fg"><label>Chauffeur</label><select class="fi" id="ee-driver" style="width:100%"></select></div>
+    <div class="fg" id="ee-driver-row" style="margin-bottom:8px"><label>Chauffeur</label><select class="fi" id="ee-driver" style="width:100%"></select></div>
+    <div class="fg"><label>Autonomie (km)</label><input type="number" class="fi" id="ee-range" style="width:100%"></div>
     <div class="modal-btns">
       <button class="btn btn-y" onclick="saveEditEntry()">Enregistrer</button>
       <button class="btn btn-g" onclick="closeModal('modal-edit-entry')">Annuler</button>
@@ -501,7 +506,7 @@ function switchTab(tab){
     document.getElementById('tab-'+t).style.display=t===tab?'':'none';
   });
   if(tab==='dashboard')renderDashboard();
-  if(tab==='saisie'){renderEntries();populateSaisieSelects();}
+  if(tab==='saisie'){renderEntries();populateSaisieSelects();refreshVanColors();}
   if(tab==='flotte')renderVanList();
   if(tab==='coursiers')renderCoursiers();
   if(tab==='admins')renderAdmins();
@@ -564,81 +569,140 @@ function toggleParked(checked){
   const track=document.getElementById('s-parked-track');
   const thumb=document.getElementById('s-parked-thumb');
   const label=document.getElementById('s-parked-label');
-  const fields=document.getElementById('s-active-fields');
+  const driverRow=document.getElementById('s-driver-row');
+  const rangeLabel=document.getElementById('s-range-label');
   if(checked){
-    track.style.background='#F0C000';
+    track.style.background='#E8A000';
     thumb.style.background='#1a1a1a';
     thumb.style.left='18px';
-    label.style.color='#F0C000';
-    fields.style.display='none';
+    label.style.color='#E8A000';
+    driverRow.style.display='none';
+    rangeLabel.textContent='Autonomie estimée au départ (km) — optionnel';
   }else{
     track.style.background='#333';
     thumb.style.background='#888';
     thumb.style.left='2px';
     label.style.color='#aaa';
-    fields.style.display='';
+    driverRow.style.display='';
+    rangeLabel.textContent='Autonomie estimée (km)';
   }
+}
+
+function refreshVanColors(){
+  const date=document.getElementById('s-date').value;
+  const pills=document.getElementById('van-status-pills');
+  if(!date||!S.vans.length){pills.innerHTML='';return;}
+  pills.innerHTML=S.vans.map(v=>{
+    const e=S.entries.find(x=>x.vanId===v.id&&x.date===date);
+    let bg,color,label;
+    if(!e){bg='#2a2a2a';color='#666';label=v.name;}
+    else if(e.parked){bg='#333';color='#888';label='🅿 '+v.name;}
+    else{bg='#1D9E7522';color='#1D9E75';label='✓ '+v.name+' ('+e.range+'km)';}
+    return`<span style="background:${bg};color:${color};border:1px solid ${e?'#1D9E7566':'#333'};border-radius:99px;padding:3px 9px;font-size:11px;font-weight:600;transition:all .2s">${label}</span>`;
+  }).join('');
+  // Also highlight the selected van select
+  const vanSel=document.getElementById('s-van');
+  const selVanId=vanSel.value;
+  const existingEntry=selVanId?S.entries.find(x=>x.vanId===selVanId&&x.date===date):null;
+  vanSel.style.borderColor=existingEntry?'#1D9E75':'#333';
+  vanSel.style.color=existingEntry?'#1D9E75':'#fff';
 }
 
 function populateSaisieSelects(){
   const vs=document.getElementById('s-van');
   const ds=document.getElementById('s-driver');
+  const prevVan=vs.value;
   vs.innerHTML='<option value="">-- Camionnette --</option>'+S.vans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  if(prevVan)vs.value=prevVan;
   ds.innerHTML='<option value="">-- Chauffeur --</option>'+sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}">${c.fn} ${c.ln}</option>`).join('');
+  refreshVanColors();
 }
 
 function addEntry(){
   const date=document.getElementById('s-date').value;
   const vanId=document.getElementById('s-van').value;
   const parked=document.getElementById('s-parked').checked;
+  const rangeRaw=document.getElementById('s-range').value;
+  const range=rangeRaw?parseFloat(rangeRaw):null;
   if(!date||!vanId)return toast('Sélectionnez une date et une camionnette');
   if(!parked){
     const driverId=document.getElementById('s-driver').value;
-    const range=parseFloat(document.getElementById('s-range').value);
-    if(!driverId||!range)return toast('Remplissez chauffeur et autonomie');
+    if(!driverId)return toast('Sélectionnez un chauffeur');
+    if(!range)return toast('Entrez l\'autonomie estimée');
     S.entries.push({id:'e'+Date.now(),date,vanId,driverId,range,parked:false});
   }else{
-    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range:null,parked:true});
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range:range,parked:true});
   }
   S.entries.sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('s-range').value='';
   document.getElementById('s-van').value='';
   document.getElementById('s-driver').value='';
-  // reset toggle
   document.getElementById('s-parked').checked=false;
   toggleParked(false);
   saveState('Saisie enregistrée');
   renderEntries();
+  refreshVanColors();
 }
 
 function renderEntries(){
-  const tbody=document.getElementById('entries-tbody'),empty=document.getElementById('entries-empty');
-  if(!S.entries.length){tbody.innerHTML='';empty.style.display='block';return;}
+  const el=document.getElementById('entries-list');
+  const empty=document.getElementById('entries-empty');
+  if(!S.entries.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  tbody.innerHTML=S.entries.slice(0,60).map(e=>{
+  el.innerHTML=S.entries.slice(0,60).map(e=>{
     const v=S.vans.find(x=>x.id===e.vanId);
-    const del=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!==\'${e.id}\');saveState('Supprimé');renderEntries()})">✕</button>`;
-    if(e.parked){
-      return`<tr style="opacity:.65"><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td colspan="2" style="color:#666;font-style:italic">🅿 Non utilisé</td><td><span class="badge" style="background:#2a2a2a;color:#666;border:1px solid #333">Inactif</span></td>
-      <td><div style="display:flex;gap:4px">${del}</div></td></tr>`;
-    }
-    const st=getStatus(e.range,v?.nominal);
-    return`<tr><td>${fmt(e.date)}</td><td>${v?.name||'?'}</td><td>${coursierName(e.driverId)}</td><td>${e.range}</td><td><span class="badge b-${st}">${statusLabel(st)}</span></td>
-    <td><div style="display:flex;gap:4px"><button class="ia-btn" onclick="openEditEntry('${e.id}')">✎</button>${del}</div></td></tr>`;
+    const vname=v?.name||'?';
+    const isParked=e.parked;
+    const st=isParked?null:getStatus(e.range,v?.nominal);
+    const stLabel=isParked?'Non utilisé':statusLabel(st);
+    const stColor=isParked?'#666':statusColor(st);
+    const stBg=isParked?'#2a2a2a':st==='ok'?'#1D9E7522':st==='warn'?'#E8A00022':'#CC000022';
+    const kmDisplay=e.range!=null?e.range+' km':'—';
+    const driverDisplay=isParked?'<span style="color:#666;font-style:italic">🅿 Non utilisé</span>':
+      `<span style="color:#f0f0f0">${coursierName(e.driverId)}</span>`;
+    const editBtn=!isParked?`<button class="ia-btn" onclick="openEditEntry('${e.id}')" style="padding:4px 9px;font-size:11px">✎</button>`:'';
+    const delBtn=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!==\'${e.id}\');saveState('Supprimé');renderEntries();refreshVanColors()})" style="padding:4px 9px;font-size:11px">✕</button>`;
+    return`<div style="background:#252525;border-radius:9px;padding:11px 13px;margin-bottom:7px;border:1px solid ${isParked?'#2a2a2a':'#2e2e2e'};opacity:${isParked?'.75':'1'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap">
+            <span style="background:#F0C000;color:#1a1a1a;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;padding:2px 8px;border-radius:5px">${vname}</span>
+            <span style="font-size:11px;color:#888">${fmt(e.date)}</span>
+            <span style="background:${stBg};color:${stColor};border-radius:99px;padding:2px 8px;font-size:11px;font-weight:600">${stLabel}</span>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div>${driverDisplay}</div>
+            ${e.range!=null?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:${stColor}">${kmDisplay}</div>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">${editBtn}${delBtn}</div>
+      </div>
+    </div>`;
   }).join('');
 }
 
 function openEditEntry(id){
-  editEntryId=id;const e=S.entries.find(x=>x.id===id);if(!e||e.parked)return;
-  document.getElementById('ee-range').value=e.range;
-  document.getElementById('ee-driver').innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}" ${c.id===e.driverId?'selected':''}>${c.fn} ${c.ln}</option>`).join('');
+  editEntryId=id;
+  const e=S.entries.find(x=>x.id===id);if(!e)return;
+  document.getElementById('ee-range').value=e.range||'';
+  const drSel=document.getElementById('ee-driver');
+  drSel.innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}" ${c.id===e.driverId?'selected':''}>${c.fn} ${c.ln}</option>`).join('');
+  // show/hide driver field based on parked
+  document.getElementById('ee-driver-row').style.display=e.parked?'none':'';
   openModal('modal-edit-entry');
 }
 function saveEditEntry(){
   const e=S.entries.find(x=>x.id===editEntryId);if(!e)return;
-  e.range=parseFloat(document.getElementById('ee-range').value)||e.range;
-  e.driverId=document.getElementById('ee-driver').value||e.driverId;
-  closeModal('modal-edit-entry');saveState('Saisie modifiée');renderEntries();
+  const newRange=parseFloat(document.getElementById('ee-range').value);
+  if(!isNaN(newRange)&&newRange>0)e.range=newRange;
+  if(!e.parked){
+    const newDriver=document.getElementById('ee-driver').value;
+    if(newDriver)e.driverId=newDriver;
+  }
+  closeModal('modal-edit-entry');
+  saveState('Saisie modifiée');
+  renderEntries();
+  refreshVanColors();
 }
 
 // === FLOTTE (vans only) ===
