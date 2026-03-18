@@ -893,7 +893,6 @@ function renderDashboard(){
   // Impact = autonomy(D+2) - autonomy(D)
   // Average the impact per driver across all their drives.
   const impactMap={};
-  const tod=today();
   S.entries.filter(e=>!e.parked&&e.driverId&&e.range).forEach(e=>{
     const d2=addDays(e.date,2);
     const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&!x.parked&&x.range!=null);
