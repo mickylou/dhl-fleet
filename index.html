@@ -6,9 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DHL Fleet">
+<meta name="apple-mobile-web-app-title" content="DHL Autonomie & Stock">
 <meta name="theme-color" content="#F0C000">
-<title>Fleet Management DHL</title>
+<title>Autonomie des électriques & Stock Carcheck Kot</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -210,8 +210,8 @@ select.fi option{background:#1a1a1a}
       <polygon points="0,62 30,62 18,80 0,80" fill="#FFCC00"/>
       <polygon points="35,62 245,62 245,80 23,80" fill="#FFCC00"/>
     </svg>
-    <div class="app-title">Fleet Management DHL</div>
-    <div class="app-sub">CONTRÔLE QUOTIDIEN DE FLOTTE</div>
+    <div class="app-title">Autonomie des électriques</div>
+    <div class="app-sub">& STOCK CARCHECK KOT — DHL</div>
     <div class="app-date" id="login-date"></div>
     <div class="admins-grid" id="admins-grid"></div>
   </div>
@@ -717,6 +717,17 @@ function sortedCoursiers(list){
     return a.ln.toLowerCase().localeCompare(b.ln.toLowerCase());
   });
 }
+
+// ══════════════════════════════════════════════
+// STOCK STATUS (défini tôt car utilisé dans updateTabBadges)
+// ══════════════════════════════════════════════
+function stockStatus(art){
+  if(!art||art.qty<=0)return'empty';
+  if(art.minQty>0&&art.qty<=art.minQty)return'warn';
+  return'ok';
+}
+function stockStatusColor(s){return s==='ok'?'#1D9E75':s==='warn'?'#E8A000':'#CC0000';}
+function stockStatusLabel(s){return s==='ok'?'En stock':s==='warn'?'Stock bas':'Rupture';}
 
 // ══════════════════════════════════════════════
 // CLOCK & DATE
@@ -1362,13 +1373,6 @@ function selectUnit(btn,unit){
 // ══════════════════════════════════════════════
 // STOCK — CRUD
 // ══════════════════════════════════════════════
-function stockStatus(art){
-  if(art.qty<=0)return'empty';
-  if(art.minQty>0&&art.qty<=art.minQty)return'warn';
-  return'ok';
-}
-function stockStatusColor(s){return s==='ok'?'#1D9E75':s==='warn'?'#E8A000':'#CC0000';}
-function stockStatusLabel(s){return s==='ok'?'En stock':s==='warn'?'Stock bas':'Rupture';}
 
 function convDisplay(art,qty){
   if(!art.convFactor||!art.convUnit)return null;
