@@ -240,10 +240,10 @@ select.fi option{background:#1a1a1a}
     <div class="main-tab active" data-tab="dashboard">📊 Tableau</div>
     <div class="main-tab" data-tab="saisie">✍️ Saisie</div>
     <div class="main-tab" data-tab="flotte">🚐 Flotte</div>
-    <div class="main-tab" data-tab="coursiers">👥 Équipe</div>
+    <div class="main-tab" data-tab="coursiers">👥 Coursiers</div>
+    <div class="main-tab" data-tab="rapport">📄 Rapports</div>
     <div class="main-tab" data-tab="stock">📦 Stock</div>
     <div class="main-tab" data-tab="admins">⚙️ Admins</div>
-    <div class="main-tab" data-tab="rapport">📄 Rapports</div>
   </div>
 
   <!-- ── DASHBOARD ── -->
@@ -256,7 +256,7 @@ select.fi option{background:#1a1a1a}
     <div class="card" style="padding:10px 12px">
       <div class="chart-wrap"><canvas id="chart-overview"></canvas></div>
     </div>
-    <div class="sec-title">Classement chauffeurs — autonomie moyenne</div>
+    <div class="sec-title">Impact conducteurs sur l'autonomie — 7 jours</div>
     <div id="db-ranking" style="margin-bottom:12px"></div>
     <div class="sec-title">Dernières saisies</div>
     <div id="db-recent"></div>
@@ -466,32 +466,49 @@ select.fi option{background:#1a1a1a}
       <datalist id="cat-dl"></datalist>
     </div>
     <!-- Unité principale -->
-    <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Unité de stock</div>
-    <div class="unit-grid" id="unit-grid-add">
-      <div class="unit-btn active" onclick="selectUnit(this,'pcs')" data-unit="pcs">pce</div>
-      <div class="unit-btn" onclick="selectUnit(this,'L')" data-unit="L">Litre</div>
-      <div class="unit-btn" onclick="selectUnit(this,'kg')" data-unit="kg">kg</div>
-      <div class="unit-btn" onclick="selectUnit(this,'m')" data-unit="m">mètre</div>
-      <div class="unit-btn" onclick="selectUnit(this,'boîte')" data-unit="boîte">Boîte</div>
-      <div class="unit-btn" onclick="selectUnit(this,'rouleau')" data-unit="rouleau">Rouleau</div>
-      <div class="unit-btn" onclick="selectUnit(this,'sac')" data-unit="sac">Sac</div>
-      <div class="unit-btn" onclick="selectUnit(this,'custom')" data-unit="custom">Autre</div>
+    <div style="display:flex;gap:7px;margin-bottom:8px">
+      <div class="fg">
+        <label>Unité de stock</label>
+        <select class="fi" id="art-unit-sel" onchange="onUnitChange(this.value)">
+          <option value="pcs">pce (pièce)</option>
+          <option value="L">Litre (L)</option>
+          <option value="mL">Millilitre (mL)</option>
+          <option value="kg">Kilogramme (kg)</option>
+          <option value="g">Gramme (g)</option>
+          <option value="m">Mètre (m)</option>
+          <option value="cm">Centimètre (cm)</option>
+          <option value="boîte">Boîte</option>
+          <option value="rouleau">Rouleau</option>
+          <option value="sac">Sac</option>
+          <option value="bidon">Bidon</option>
+          <option value="flacon">Flacon</option>
+          <option value="tube">Tube</option>
+          <option value="custom">Autre (personnalisé)...</option>
+        </select>
+      </div>
     </div>
-    <input type="text" class="fi" id="art-unit-custom" style="width:100%;display:none;margin-bottom:8px" placeholder="Unité personnalisée...">
+    <input type="text" class="fi" id="art-unit-custom" style="width:100%;display:none;margin-bottom:8px" placeholder="Entrez votre unité...">
     <input type="hidden" id="art-unit-val" value="pcs">
-    <!-- Contenance par pièce (pour convertir pcs → litres etc.) -->
-    <div id="art-conv-row" style="display:none;margin-bottom:8px">
-      <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Contenance par unité <span style="color:#444;font-weight:400">(optionnel — pour conversion)</span></div>
+    <!-- Contenance par unité (pour convertir ex: 1 bidon = 5 litres) -->
+    <div id="art-conv-row" style="margin-bottom:8px">
+      <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Contenance par unité <span style="color:#444;font-weight:400;text-transform:none">(optionnel)</span></div>
       <div style="display:flex;gap:7px;align-items:center">
-        <div class="fg" style="flex:none;width:80px"><label>1 <span id="conv-unit-label">pcs</span> =</label><input type="number" class="fi" id="art-conv" min="0" step="0.01" placeholder="0"></div>
-        <select class="fi" id="art-conv-unit" style="flex:1">
+        <div class="fg" style="flex:none">
+          <label>1 <span id="conv-unit-label">pce</span> contient</label>
+          <input type="number" class="fi" id="art-conv" min="0" step="0.001" placeholder="ex: 5">
+        </div>
+        <select class="fi" id="art-conv-unit" style="flex:1;align-self:flex-end">
+          <option value="">— unité —</option>
           <option value="L">litres</option>
           <option value="mL">mL</option>
+          <option value="cL">cL</option>
           <option value="kg">kg</option>
           <option value="g">g</option>
           <option value="m">mètres</option>
+          <option value="cm">cm</option>
         </select>
       </div>
+      <div style="font-size:10px;color:#444;margin-top:4px" id="conv-preview"></div>
     </div>
     <div style="display:flex;gap:7px;margin-bottom:8px">
       <div class="fg"><label>Qté initiale</label><input type="number" class="fi" id="art-qty" min="0" value="1" step="0.1"></div>
@@ -859,38 +876,78 @@ function renderDashboard(){
     }
   });
 
-  // Ranking (top chauffeurs J-7)
-  const drvMap={};
-  for(let i=0;i<7;i++){
-    const d=addDays(tod,-i);
-    S.entries.filter(e=>e.date===d&&!e.parked&&e.driverId&&e.range).forEach(e=>{
-      if(!drvMap[e.driverId])drvMap[e.driverId]={sum:0,count:0};
-      drvMap[e.driverId].sum+=e.range;
-      drvMap[e.driverId].count++;
-    });
-  }
-  const ranking=Object.entries(drvMap)
-    .map(([id,v])=>({id,avg:Math.round(v.sum/v.count),count:v.count}))
-    .sort((a,b)=>b.avg-a.avg).slice(0,5);
+  // ── IMPACT RANKING ──
+  // For each entry where driver X drove on day D,
+  // we check the autonomy on day D+2 on the SAME van.
+  // Impact = autonomy(D+2) - autonomy(D)
+  // Average the impact per driver across all their drives.
+  const impactMap={};
+  const tod=today();
+  S.entries.filter(e=>!e.parked&&e.driverId&&e.range).forEach(e=>{
+    const d2=addDays(e.date,2);
+    const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&!x.parked&&x.range!=null);
+    if(!nextEntry)return; // no data 2 days later
+    const delta=nextEntry.range-e.range;
+    if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
+    impactMap[e.driverId].deltas.push(delta);
+    impactMap[e.driverId].count++;
+  });
+
+  const impactRanking=Object.entries(impactMap)
+    .filter(([,v])=>v.count>=1)
+    .map(([id,v])=>{
+      const avg=Math.round(v.deltas.reduce((s,x)=>s+x,0)/v.deltas.length);
+      return{id,avg,count:v.count};
+    })
+    .sort((a,b)=>b.avg-a.avg);
+
   const rkEl=document.getElementById('db-ranking');
-  if(!ranking.length){rkEl.innerHTML=`<div style="color:#444;font-size:12px;padding:8px 0">Pas encore de données.</div>`;
+  if(!impactRanking.length){
+    rkEl.innerHTML=`<div style="color:#444;font-size:12px;padding:8px 0;line-height:1.6">Pas encore assez de données.<br><span style="font-size:11px;color:#333">L'impact est calculé en comparant l'autonomie J+2 après chaque trajet.</span></div>`;
   }else{
-    const maxAvg=ranking[0].avg;
-    rkEl.innerHTML=ranking.map((r,i)=>{
-      const medal=['🥇','🥈','🥉','',''][i]||'';
-      const barW=Math.round((r.avg/maxAvg)*100);
-      const v=S.vans.find(v=>S.entries.find(e=>e.driverId===r.id&&e.vanId===v.id));
-      return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:6px;border:1px solid #252525">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-          <span style="font-size:13px;color:#f0f0f0;font-weight:500">${medal} ${coursierName(r.id)}</span>
-          <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:#F0C000">${r.avg} km</span>
-        </div>
-        <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
-          <div style="background:#F0C000;height:100%;width:${barW}%;border-radius:99px;transition:width .5s"></div>
-        </div>
-        <div style="font-size:10px;color:#444;margin-top:4px">${r.count} jour${r.count>1?'s':''} de données — 7 derniers jours</div>
-      </div>`;
-    }).join('');
+    const positives=impactRanking.filter(r=>r.avg>=0);
+    const negatives=impactRanking.filter(r=>r.avg<0).reverse(); // worst first for negative
+    const maxAbs=Math.max(...impactRanking.map(r=>Math.abs(r.avg)),1);
+
+    let html=`<div style="font-size:10px;color:#555;margin-bottom:10px;line-height:1.5">Impact mesuré = autonomie J+2 − autonomie le jour du trajet · ${impactRanking.length} chauffeur${impactRanking.length>1?'s':''} analysés</div>`;
+
+    // Positive section
+    if(positives.length){
+      html+=`<div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">✅ Conduite économique — font progresser</div>`;
+      html+=positives.map((r,i)=>{
+        const barW=Math.round((r.avg/maxAbs)*100);
+        const medals=['🥇','🥈','🥉'];
+        return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #1D9E7522">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <span style="font-size:12px;color:#ccc;font-weight:500">${medals[i]||''} ${coursierName(r.id)}</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#1D9E75">+${r.avg} km</span>
+          </div>
+          <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+            <div style="background:#1D9E75;height:100%;width:${barW}%;border-radius:99px"></div>
+          </div>
+          <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Negative section
+    if(negatives.length){
+      html+=`<div style="font-size:10px;font-weight:800;color:#CC0000;text-transform:uppercase;letter-spacing:.8px;margin:10px 0 6px">⚠️ Conduite intensive — font descendre</div>`;
+      html+=negatives.map((r,i)=>{
+        const barW=Math.round((Math.abs(r.avg)/maxAbs)*100);
+        return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #CC000022">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <span style="font-size:12px;color:#ccc;font-weight:500">⚠ ${coursierName(r.id)}</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#CC0000">${r.avg} km</span>
+          </div>
+          <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+            <div style="background:#CC0000;height:100%;width:${barW}%;border-radius:99px"></div>
+          </div>
+          <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+        </div>`;
+      }).join('');
+    }
+    rkEl.innerHTML=html;
   }
 
   // Recent entries
@@ -1118,38 +1175,65 @@ function renderCoursiers(){
     </div>`).join('');
 }
 function renderCoursiersRanking(){
-  const tod=today();
-  const drvMap={};
-  for(let i=0;i<30;i++){
-    const d=addDays(tod,-i);
-    S.entries.filter(e=>e.date===d&&!e.parked&&e.driverId&&e.range).forEach(e=>{
-      if(!drvMap[e.driverId])drvMap[e.driverId]={sum:0,count:0};
-      drvMap[e.driverId].sum+=e.range;
-      drvMap[e.driverId].count++;
-    });
-  }
-  const ranking=Object.entries(drvMap)
-    .map(([id,v])=>({id,avg:Math.round(v.sum/v.count),count:v.count}))
+  const impactMap={};
+  S.entries.filter(e=>!e.parked&&e.driverId&&e.range).forEach(e=>{
+    const d2=addDays(e.date,2);
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&!x.parked&&x.range!=null);
+    if(!next)return;
+    const delta=next.range-e.range;
+    if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
+    impactMap[e.driverId].deltas.push(delta);
+    impactMap[e.driverId].count++;
+  });
+  const ranking=Object.entries(impactMap)
+    .filter(([,v])=>v.count>=1)
+    .map(([id,v])=>({id,avg:Math.round(v.deltas.reduce((s,x)=>s+x,0)/v.deltas.length),count:v.count}))
     .sort((a,b)=>b.avg-a.avg);
   const el=document.getElementById('coursiers-ranking');
-  if(!ranking.length){el.innerHTML=`<div style="color:#444;font-size:12px;padding:4px 0">Pas encore de données (30 jours).</div>`;return;}
-  const maxAvg=ranking[0].avg;
-  el.innerHTML=`<div style="font-size:10px;color:#555;margin-bottom:8px">Basé sur 30 derniers jours · ${ranking.length} chauffeurs avec données</div>`+
-  ranking.map((r,i)=>{
-    const medals=['🥇','🥈','🥉'];
-    const barW=Math.round((r.avg/maxAvg)*100);
-    const col=i===0?'#F0C000':i===1?'#aaa':i===2?'#E8A000':'#555';
-    return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #252525">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-        <span style="font-size:12px;color:#ccc;font-weight:500">${medals[i]||'  '} ${coursierName(r.id)}</span>
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${col}">${r.avg} km</span>
-      </div>
-      <div style="background:#252525;border-radius:99px;height:3px;overflow:hidden">
-        <div style="background:${col};height:100%;width:${barW}%;border-radius:99px"></div>
-      </div>
-      <div style="font-size:10px;color:#444;margin-top:3px">${r.count} jour${r.count>1?'s':''} de conduite</div>
-    </div>`;
-  }).join('');
+  if(!ranking.length){
+    el.innerHTML=`<div style="color:#444;font-size:12px;padding:4px 0;line-height:1.6">Pas encore assez de données.<br><span style="font-size:11px">L'impact est calculé sur la base de l'autonomie J+2 après chaque trajet.</span></div>`;
+    return;
+  }
+  const maxAbs=Math.max(...ranking.map(r=>Math.abs(r.avg)),1);
+  const positives=ranking.filter(r=>r.avg>=0);
+  const negatives=ranking.filter(r=>r.avg<0).reverse();
+  let html=`<div style="font-size:10px;color:#555;margin-bottom:10px;line-height:1.5">
+    Impact = autonomie J+2 − autonomie le jour du trajet (même camionnette) · ${ranking.length} chauffeur${ranking.length>1?'s':''} analysés
+  </div>`;
+  if(positives.length){
+    html+=`<div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">✅ Impact positif — font progresser l'autonomie</div>`;
+    html+=positives.map((r,i)=>{
+      const barW=Math.round((Math.abs(r.avg)/maxAbs)*100);
+      const medals=['🥇','🥈','🥉'];
+      return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #1D9E7522">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;color:#ccc;font-weight:500">${medals[i]||''} ${coursierName(r.id)}</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#1D9E75">+${r.avg} km</span>
+        </div>
+        <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+          <div style="background:#1D9E75;height:100%;width:${barW}%;border-radius:99px"></div>
+        </div>
+        <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+      </div>`;
+    }).join('');
+  }
+  if(negatives.length){
+    html+=`<div style="font-size:10px;font-weight:800;color:#CC0000;text-transform:uppercase;letter-spacing:.8px;margin:12px 0 6px">⚠️ Impact négatif — font descendre l'autonomie</div>`;
+    html+=negatives.map((r,i)=>{
+      const barW=Math.round((Math.abs(r.avg)/maxAbs)*100);
+      return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #CC000022">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;color:#ccc;font-weight:500">⚠ ${coursierName(r.id)}</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#CC0000">${r.avg} km</span>
+        </div>
+        <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+          <div style="background:#CC0000;height:100%;width:${barW}%;border-radius:99px"></div>
+        </div>
+        <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML=html;
 }
 function saveAddCoursier(){
   const fn=document.getElementById('ac-fn').value.trim();
@@ -1239,17 +1323,40 @@ function handlePhoto(event){
 // ══════════════════════════════════════════════
 // STOCK — UNIT SELECTOR
 // ══════════════════════════════════════════════
-function selectUnit(btn,unit){
-  document.querySelectorAll('#unit-grid-add .unit-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('art-unit-val').value=unit==='custom'?'':unit;
+function onUnitChange(val){
   const customInput=document.getElementById('art-unit-custom');
-  customInput.style.display=unit==='custom'?'block':'none';
-  // Show conversion row if unit is pcs, boîte, rouleau, sac
-  const showConv=['pcs','boîte','rouleau','sac'].includes(unit);
-  const convRow=document.getElementById('art-conv-row');
-  convRow.style.display=showConv?'block':'none';
-  if(showConv)document.getElementById('conv-unit-label').textContent=unit;
+  const convLabel=document.getElementById('conv-unit-label');
+  if(val==='custom'){
+    customInput.style.display='block';
+    document.getElementById('art-unit-val').value='';
+    customInput.oninput=function(){
+      document.getElementById('art-unit-val').value=this.value;
+      if(convLabel)convLabel.textContent=this.value||'unité';
+      updateConvPreview();
+    };
+  }else{
+    customInput.style.display='none';
+    document.getElementById('art-unit-val').value=val;
+    if(convLabel)convLabel.textContent=val;
+  }
+  updateConvPreview();
+}
+
+function updateConvPreview(){
+  const unit=document.getElementById('art-unit-val').value||document.getElementById('art-unit-sel').value;
+  const conv=parseFloat(document.getElementById('art-conv')?.value)||0;
+  const convUnit=document.getElementById('art-conv-unit')?.value;
+  const prev=document.getElementById('conv-preview');
+  if(!prev)return;
+  if(conv>0&&convUnit&&unit&&unit!=='custom'){
+    prev.textContent=`Exemple: 3 ${unit} = ${fmtNum(3*conv)} ${convUnit}`;
+    prev.style.color='#F0C000';
+  }else{prev.textContent='';}
+}
+
+// Legacy selectUnit kept for compatibility (not used in new modal but keep for edit modal)
+function selectUnit(btn,unit){
+  onUnitChange(unit);
 }
 
 // ══════════════════════════════════════════════
@@ -1364,25 +1471,32 @@ function saveAddArticle(){
   const name=document.getElementById('art-name').value.trim();
   const cat=document.getElementById('art-cat').value.trim();
   let unit=document.getElementById('art-unit-val').value;
-  if(!unit)unit=document.getElementById('art-unit-custom').value.trim()||'pcs';
+  if(!unit){
+    const sel=document.getElementById('art-unit-sel').value;
+    unit=sel==='custom'?(document.getElementById('art-unit-custom').value.trim()||'pcs'):sel||'pcs';
+  }
   const qty=parseFloat(document.getElementById('art-qty').value)||0;
   const minQty=parseFloat(document.getElementById('art-min').value)||0;
-  const convFactor=parseFloat(document.getElementById('art-conv').value)||0;
-  const convUnit=document.getElementById('art-conv-unit').value;
+  const convFactor=parseFloat(document.getElementById('art-conv').value)||null;
+  const convUnit=document.getElementById('art-conv-unit').value||null;
   if(!name)return toast('Entrez un nom d\'article');
   const id='art'+Date.now();
-  S.stock.push({id,name,cat,qty,unit,minQty,convFactor:convFactor||null,convUnit:convUnit||null});
+  S.stock.push({id,name,cat,qty,unit,minQty,convFactor,convUnit});
   if(qty>0)S.stockHistory.push({id:'h'+Date.now(),artId:id,artName:name,type:'entree',qty,after:qty,unit,note:'Stock initial',by:S.currentAdmin?.name||'?',date:today()});
   closeModal('modal-add-article');
   // reset form
-  document.getElementById('art-name').value='';document.getElementById('art-cat').value='';
-  document.getElementById('art-qty').value='1';document.getElementById('art-min').value='0';
+  document.getElementById('art-name').value='';
+  document.getElementById('art-cat').value='';
+  document.getElementById('art-qty').value='1';
+  document.getElementById('art-min').value='0';
   document.getElementById('art-conv').value='';
-  document.querySelectorAll('#unit-grid-add .unit-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('art-conv-unit').value='';
+  document.getElementById('art-unit-sel').value='pcs';
   document.getElementById('art-unit-val').value='pcs';
   document.getElementById('art-unit-custom').style.display='none';
-  document.getElementById('art-conv-row').style.display='none';
-  saveState('Article ajouté');renderStock();updateTabBadges();
+  document.getElementById('conv-unit-label').textContent='pce';
+  document.getElementById('conv-preview').textContent='';
+  saveState('Article ajouté ✓');renderStock();updateTabBadges();
 }
 
 function openEditArticle(id){
