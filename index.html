@@ -16,18 +16,17 @@
 <style>
 /* === RESET & BASE === */
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px}
+body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100svh;display:flex;align-items:flex-start;justify-content:center;padding:16px}
 
 /* === FRAME === */
-.phone{background:#161616;border-radius:30px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 50px 100px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06),inset 0 1px 0 rgba(255,255,255,.06)}
+.phone{background:#161616;border-radius:26px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06)}
 
 /* === SCREENS === */
-.screen{display:none;flex-direction:column;min-height:100dvh}
+.screen{display:none;flex-direction:column}
 .screen.active{display:flex}
 
 /* === LOGIN === */
-#screen-login{padding:36px 24px 24px;align-items:center;background:linear-gradient(180deg,#1e1e1e 0%,#161616 100%);min-height:100dvh;justify-content:center}
+#screen-login{padding:30px 24px;align-items:center;justify-content:center;background:linear-gradient(180deg,#1e1e1e 0%,#161616 100%);min-height:100svh}
 .app-title{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#F0C000;letter-spacing:1.5px;margin:14px 0 4px;text-align:center;text-transform:uppercase}
 .app-sub{font-size:12px;color:#666;margin-bottom:6px;text-align:center;letter-spacing:.5px}
 .app-date{font-size:11px;color:#444;margin-bottom:26px;text-align:center}
@@ -358,15 +357,28 @@ select.fi option{background:#1a1a1a}
       <div class="fg" style="margin-bottom:8px"><label>Prénom</label><input type="text" class="fi" id="new-admin-name" placeholder="ex: Sophie"></div>
       <button class="btn btn-y btn-full" onclick="addAdmin()">+ Ajouter</button>
     </div>
+
+    <!-- SYNC SECTION -->
+    <div class="sec-title" style="margin-top:10px">📲 Synchronisation entre appareils</div>
+    <div class="card" style="background:#1a1500;border-color:#F0C00033">
+      <div style="font-size:12px;color:#E8A000;margin-bottom:10px;line-height:1.6">⚠️ Les données sont <strong>locales à chaque appareil</strong>. Pour partager entre PC et GSM, exportez depuis un appareil et importez sur l'autre.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-y" onclick="exportData()" style="flex:1;font-size:12px">📤 Exporter les données</button>
+        <button class="btn btn-g" onclick="document.getElementById('import-file').click()" style="flex:1;font-size:12px">📥 Importer</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <div style="font-size:10px;color:#666;margin-top:8px;line-height:1.5">Export = fichier JSON · Importez ce fichier sur votre autre appareil</div>
+    </div>
+
     <div class="sec-title" style="margin-top:10px">Informations application</div>
     <div class="card" style="background:#111;border-color:#222">
-      <div style="font-size:12px;color:#555;line-height:1.9">
-        <div>📅 Date: <span style="color:#888" id="info-date"></span></div>
-        <div>👤 Dernière modif: <span style="color:#888" id="info-lastmod"></span></div>
-        <div>🚐 Camionnettes: <span style="color:#888" id="info-vans"></span></div>
-        <div>👥 Coursiers: <span style="color:#888" id="info-coursiers"></span></div>
-        <div>📦 Articles stock: <span style="color:#888" id="info-stock"></span></div>
-        <div>✍️ Saisies totales: <span style="color:#888" id="info-entries"></span></div>
+      <div style="font-size:12px;color:#888;line-height:1.9">
+        <div>📅 Date: <span style="color:#aaa" id="info-date"></span></div>
+        <div>👤 Dernière modif: <span style="color:#aaa" id="info-lastmod"></span></div>
+        <div>🚐 Camionnettes: <span style="color:#aaa" id="info-vans"></span></div>
+        <div>👥 Coursiers: <span style="color:#aaa" id="info-coursiers"></span></div>
+        <div>📦 Articles stock: <span style="color:#aaa" id="info-stock"></span></div>
+        <div>✍️ Saisies totales: <span style="color:#aaa" id="info-entries"></span></div>
       </div>
     </div>
   </div>
@@ -1288,6 +1300,45 @@ function saveEditCoursier(){
   c.ln=document.getElementById('ec-ln').value.trim().toUpperCase()||c.ln;
   c.code=document.getElementById('ec-code').value.trim().toUpperCase()||c.code;
   closeModal('modal-edit-c');saveState('Coursier modifié');renderCoursiers();
+}
+
+// ══════════════════════════════════════════════
+// EXPORT / IMPORT DATA
+// ══════════════════════════════════════════════
+function exportData(){
+  const data=JSON.stringify(S,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const now=new Date().toLocaleDateString('fr-BE').replace(/\//g,'-');
+  a.href=url;a.download=`dhl-fleet-data-${now}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Données exportées ✓');
+}
+
+function importData(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!d.coursiers||!d.admins)return toast('Fichier invalide');
+      if(!confirm(`Importer les données ?\nCela remplacera toutes les données actuelles de cet appareil.\n\n${d.entries?.length||0} saisies · ${d.stock?.length||0} articles stock`))return;
+      S.coursiers=d.coursiers||clone(INIT_COURSIERS);
+      S.admins=d.admins||clone(INIT_ADMINS);
+      S.vans=d.vans||clone(INIT_VANS);
+      S.entries=d.entries||[];
+      S.stock=d.stock||[];
+      S.stockHistory=d.stockHistory||[];
+      S.lastMod=d.lastMod||'—';
+      saveState('Données importées ✓');
+      renderAdmins();renderLogin();
+      toast('✅ Import réussi — '+( d.entries?.length||0)+' saisies importées');
+    }catch(err){toast('Erreur: fichier JSON invalide');}
+  };
+  reader.readAsText(file);
+  event.target.value='';
 }
 
 // ══════════════════════════════════════════════
