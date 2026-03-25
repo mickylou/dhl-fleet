@@ -719,7 +719,7 @@ function coursierName(id){
 }
 function driverJ2(vanId,date){
   const d2=addDays(date,-2);
-  const e=S.entries.find(x=>x.vanId===vanId&&x.date===d2&&!x.parked);
+  const e=S.entries.find(x=>x.vanId===vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
   if(!e)return null;
   return S.coursiers.find(c=>c.id===e.driverId)||null;
 }
@@ -829,19 +829,28 @@ function switchTab(tab){
 // ══════════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════════
+function isWeekend(dateStr){
+  const d=new Date(dateStr);
+  return d.getDay()===0||d.getDay()===6; // 0=Sun, 6=Sat
+}
+
 function renderDashboard(){
   const tod=today();
-  const todE=S.entries.filter(e=>e.date===tod&&!e.parked);
+  // Include parked entries that have km (range!=null), exclude weekends
+  const todE=S.entries.filter(e=>e.date===tod&&e.range!=null&&!isWeekend(tod));
   let avgKm='—',alertCount=0,saisieToday=0;
   if(todE.length){
     const avg=todE.reduce((s,e)=>s+e.range,0)/todE.length;
     avgKm=Math.round(avg)+' km';
     saisieToday=todE.length;
-    todE.forEach(e=>{const v=S.vans.find(v=>v.id===e.vanId);if(v&&getStatus(e.range,v.nominal)==='bad')alertCount++;});
+    todE.filter(e=>!e.parked).forEach(e=>{const v=S.vans.find(v=>v.id===e.vanId);if(v&&getStatus(e.range,v.nominal)==='bad')alertCount++;});
   }
+  // 7-day trend — weekdays only, include parked with km
   const last7=[];
   for(let i=6;i>=0;i--){
-    const d=addDays(tod,-i),de=S.entries.filter(e=>e.date===d&&!e.parked);
+    const d=addDays(tod,-i);
+    if(isWeekend(d))continue;
+    const de=S.entries.filter(e=>e.date===d&&e.range!=null);
     if(de.length)last7.push(de.reduce((s,e)=>s+e.range,0)/de.length);
   }
   let trend='—',trendClass='';
@@ -850,11 +859,10 @@ function renderDashboard(){
     trend=(diff>=0?'▲ +':'▼ ')+diff+' km';
     trendClass=diff>=0?'ok':'bad';
   }
-  // Saisies today vs vans
   const saisiePct=S.vans.length?Math.round((saisieToday/S.vans.length)*100):0;
   document.getElementById('db-metrics').innerHTML=`
     <div class="metric-card"><div class="metric-val">${avgKm}</div><div class="metric-lbl">Autonomie moy. aujourd'hui</div></div>
-    <div class="metric-card"><div class="metric-val ${trendClass}">${trend}</div><div class="metric-lbl">Tendance 7 jours</div></div>
+    <div class="metric-card"><div class="metric-val ${trendClass}">${trend}</div><div class="metric-lbl">Tendance (sem.)</div></div>
     <div class="metric-card"><div class="metric-val ${alertCount>0?'bad':'ok'}">${alertCount}</div><div class="metric-lbl">Alertes autonomie</div></div>
     <div class="metric-card"><div class="metric-val ${saisiePct<100&&S.vans.length?'warn':''}">${saisieToday}/${S.vans.length}</div><div class="metric-lbl">Saisies du jour</div></div>`;
 
@@ -874,17 +882,19 @@ function renderDashboard(){
     </div>`;
   }else{dbSA.style.display='none';}
 
-  // Chart
+  // Chart — weekdays only, include parked with km
   const labels=[],datasets=[];
-  for(let i=6;i>=0;i--)labels.push(fmt(addDays(tod,-i)));
+  const chartDays=[];
+  for(let i=13;i>=0;i--){
+    const d=addDays(tod,-i);
+    if(!isWeekend(d)){chartDays.push(d);labels.push(fmt(d));}
+  }
   const cols=['#F0C000','#1D9E75','#378ADD','#E8A000','#D85A30','#8B5CF6','#EC4899'];
   S.vans.slice(0,7).forEach((van,idx)=>{
-    const data=[];
-    for(let i=6;i>=0;i--){
-      const d=addDays(tod,-i);
-      const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&!x.parked);
-      data.push(e?e.range:null);
-    }
+    const data=chartDays.map(d=>{
+      const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&x.range!=null);
+      return e?e.range:null;
+    });
     datasets.push({label:van.name,data,borderColor:cols[idx%7],backgroundColor:cols[idx%7]+'18',tension:0.35,spanGaps:false,pointRadius:4,pointHoverRadius:6,borderWidth:2});
   });
   if(overviewChart)overviewChart.destroy();
@@ -902,16 +912,12 @@ function renderDashboard(){
     }
   });
 
-  // ── IMPACT RANKING ──
-  // For each entry where driver X drove on day D,
-  // we check the autonomy on day D+2 on the SAME van.
-  // Impact = autonomy(D+2) - autonomy(D)
-  // Average the impact per driver across all their drives.
+  // ── IMPACT RANKING ── (all entries with km, excluding weekends)
   const impactMap={};
-  S.entries.filter(e=>!e.parked&&e.driverId&&e.range).forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)).forEach(e=>{
     const d2=addDays(e.date,2);
-    const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&!x.parked&&x.range!=null);
-    if(!nextEntry)return; // no data 2 days later
+    const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    if(!nextEntry)return;
     const delta=nextEntry.range-e.range;
     if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
     impactMap[e.driverId].deltas.push(delta);
@@ -975,34 +981,35 @@ function renderDashboard(){
     rkEl.innerHTML=html;
   }
 
-  // Recent entries with J+2 impact
+  // Recent entries with J+2 impact (include parked with km)
   const recent=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
   const rcEl=document.getElementById('db-recent');
   if(!recent.length){rcEl.innerHTML=`<div style="color:#666;font-size:13px;padding:8px 0">Aucune saisie.</div>`;return;}
   rcEl.innerHTML=recent.map(e=>{
     const v=S.vans.find(x=>x.id===e.vanId);
-    if(e.parked)return`<div class="card-sm" style="opacity:.65;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:13px;font-weight:700;color:#777">${v?.name||'?'}</div><div style="font-size:11px;color:#555">${fmt(e.date)}</div></div>
-      <span style="font-size:12px;color:#555">🅿 Non utilisé</span></div>`;
-    const st=getStatus(e.range,v?.nominal);
+    if(e.parked&&e.range==null)return`<div class="card-sm" style="opacity:.55;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:13px;font-weight:700;color:#666">${v?.name||'?'}</div><div style="font-size:11px;color:#555">${fmt(e.date)} · 🅿 Non utilisé</div></div>
+      <span style="font-size:12px;color:#555">— km</span></div>`;
+    const st=e.parked?'warn':getStatus(e.range,v?.nominal);
+    const stC=e.parked?'#888':statusColor(st);
     const j2=driverJ2(e.vanId,e.date);
-    // Check if this entry is itself J+2 of a previous entry to show delta
-    const j0=S.entries.find(x=>x.vanId===e.vanId&&x.date===addDays(e.date,-2)&&!x.parked&&x.range);
-    const delta=j0?e.range-j0.range:null;
+    const j0=S.entries.find(x=>x.vanId===e.vanId&&x.date===addDays(e.date,-2)&&x.range!=null);
+    const delta=j0&&e.range!=null?e.range-j0.range:null;
     const deltaStr=delta!=null?`<span style="font-size:11px;font-weight:800;color:${delta>=0?'#1D9E75':'#CC0000'};margin-left:6px">${delta>=0?'▲+':'▼'}${delta} km</span>`:'';
-    return`<div class="card-sm" style="border-left:3px solid ${statusColor(st)}22">
+    return`<div class="card-sm" style="border-left:3px solid ${stC}33">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span style="font-size:13px;font-weight:700;color:#f0f0f0">${v?.name||'?'}</span>
             <span style="font-size:10px;color:#777">${fmt(e.date)}</span>
+            ${e.parked?'<span style="font-size:10px;color:#888">🅿 Garé</span>':''}
             ${deltaStr}
           </div>
-          <div style="font-size:12px;color:#aaa;margin-top:2px">👤 ${coursierName(e.driverId)}</div>
-          ${j2?`<div style="font-size:10px;color:#777;margin-top:1px">Impact J-2: <span style="color:#F0C000;font-weight:600">${j2.fn} ${j2.ln}</span></div>`:''}
+          ${!e.parked?`<div style="font-size:12px;color:#aaa;margin-top:2px">👤 ${coursierName(e.driverId)}</div>`:''}
+          ${j2&&!e.parked?`<div style="font-size:10px;color:#777;margin-top:1px">Impact J-2: <span style="color:#F0C000;font-weight:600">${j2.fn} ${j2.ln}</span></div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0;padding-left:8px">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${statusColor(st)};line-height:1">${e.range}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range!=null?e.range:'—'}</div>
           <div style="font-size:10px;color:#666">km</div>
         </div>
       </div>
@@ -1100,7 +1107,7 @@ function renderEntries(){
     const stCol=isParked?'#555':statusColor(st);
     const j2=!isParked?driverJ2(e.vanId,e.date):null;
     const del=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!==\'${e.id}\');saveState('Supprimé');renderEntries();refreshVanStatus()})" style="padding:4px 8px">✕</button>`;
-    const edit=!isParked?`<button class="ia-btn" onclick="openEditEntry('${e.id}')" style="padding:4px 8px">✎</button>`:'';
+    const edit=`<button class="ia-btn" onclick="openEditEntry('${e.id}')" style="padding:4px 8px">✎</button>`;
     return`<div class="entry-card" style="opacity:${isParked?.7:1}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1;min-width:0">
@@ -1109,12 +1116,11 @@ function renderEntries(){
             <span style="font-size:10px;color:#555">${fmt(e.date)}</span>
             <span style="font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid ${isParked?'#333':''+stCol+'44'};color:${isParked?'#555':stCol};font-weight:700">${isParked?'Non utilisé':statusLabel(st)}</span>
           </div>
-          ${!isParked?`<div style="font-size:12px;color:#888">👤 ${coursierName(e.driverId)}</div>`:'<div style="font-size:12px;color:#555;font-style:italic">🅿 Véhicule garé / non utilisé</div>'}
+          ${!isParked?`<div style="font-size:12px;color:#888">👤 ${coursierName(e.driverId)}</div>`:'<div style="font-size:12px;color:#E8A000;font-style:italic">🅿 Garé / non utilisé</div>'}
           ${j2?`<div style="font-size:10px;color:#555;margin-top:2px">Impact J-2: ${j2.fn} ${j2.ln}</div>`:''}
-          ${e.range!=null&&isParked?`<div style="font-size:11px;color:#666;margin-top:2px">Batterie départ: ${e.range} km</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          ${!isParked&&e.range!=null?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${stCol};line-height:1">${e.range}<span style="font-size:12px;font-weight:400;color:#555"> km</span></div>`:''}
+          ${e.range!=null?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${isParked?'#888':stCol};line-height:1">${e.range}<span style="font-size:12px;font-weight:400;color:#555"> km</span></div>`:'<div style="font-size:12px;color:#444;margin-top:4px">— km</div>'}
           <div style="display:flex;gap:4px">${edit}${del}</div>
         </div>
       </div>
@@ -1125,18 +1131,22 @@ function renderEntries(){
 function openEditEntry(id){
   editEntryId=id;
   const e=S.entries.find(x=>x.id===id);if(!e)return;
-  document.getElementById('ee-range').value=e.range||'';
+  document.getElementById('ee-range').value=e.range!=null?e.range:'';
   const drSel=document.getElementById('ee-driver');
   drSel.innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}" ${c.id===e.driverId?'selected':''}>${c.fn} ${c.ln}</option>`).join('');
   document.getElementById('ee-driver-row').style.display=e.parked?'none':'';
+  // Update label for parked entries
+  const rangeLabel=document.querySelector('#modal-edit-entry label[for="ee-range"],#modal-edit-entry .fg label');
+  if(rangeLabel)rangeLabel.textContent=e.parked?'Km estimés (garée)':'Autonomie (km)';
   openModal('modal-edit-entry');
 }
 function saveEditEntry(){
   const e=S.entries.find(x=>x.id===editEntryId);if(!e)return;
-  const nr=parseFloat(document.getElementById('ee-range').value);
-  if(!isNaN(nr)&&nr>0)e.range=nr;
+  const rawVal=document.getElementById('ee-range').value;
+  if(rawVal===''){e.range=null;}
+  else{const nr=parseFloat(rawVal);if(!isNaN(nr)&&nr>=0)e.range=nr;}
   if(!e.parked){const nd=document.getElementById('ee-driver').value;if(nd)e.driverId=nd;}
-  closeModal('modal-edit-entry');saveState('Saisie modifiée');renderEntries();
+  closeModal('modal-edit-entry');saveState('Saisie modifiée ✓');renderEntries();refreshVanStatus();
 }
 
 // ══════════════════════════════════════════════
@@ -1154,10 +1164,9 @@ function renderVanList(){
   const el=document.getElementById('van-list');
   if(!S.vans.length){el.innerHTML=`<div style="color:#444;font-size:13px;padding:8px">Aucune camionnette.</div>`;return;}
   el.innerHTML=S.vans.map(v=>{
-    // Last 7d avg for this van
     const tod=today();
     const recent=[];
-    for(let i=0;i<7;i++){const d=addDays(tod,-i);const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&!x.parked);if(e)recent.push(e.range);}
+    for(let i=0;i<10;i++){const d=addDays(tod,-i);if(isWeekend(d))continue;const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&x.range!=null);if(e)recent.push(e.range);}
     const avg=recent.length?Math.round(recent.reduce((s,x)=>s+x,0)/recent.length):null;
     const st=avg?getStatus(avg,v.nominal):'ok';
     return`<div class="list-item">
@@ -1173,26 +1182,26 @@ function renderVanList(){
 }
 function renderVanStats(){
   const el=document.getElementById('van-stats');
-  const tod=today();
   el.innerHTML=S.vans.map(v=>{
-    const entries=S.entries.filter(e=>e.vanId===v.id&&!e.parked&&e.range);
+    const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isWeekend(e.date));
     if(!entries.length)return`<div class="card-sm" style="opacity:.5"><div style="font-size:12px;color:#555">${v.name} — aucune donnée</div></div>`;
     const avg=Math.round(entries.reduce((s,e)=>s+e.range,0)/entries.length);
     const min=Math.min(...entries.map(e=>e.range));
     const max=Math.max(...entries.map(e=>e.range));
     const st=getStatus(avg,v.nominal);
-    const parkedDays=S.entries.filter(e=>e.vanId===v.id&&e.parked).length;
+    const parkedWithKm=entries.filter(e=>e.parked).length;
     return`<div class="card-sm">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#f0f0f0">${v.name}</span>
         <span style="background:${statusColor(st)}22;color:${statusColor(st)};font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">${pct(avg,v.nominal)}% nominal</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center">
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor(st)}">${avg}</div><div style="font-size:9px;color:#555">Moy. km</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#CC0000">${min}</div><div style="font-size:9px;color:#555">Min</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1D9E75">${max}</div><div style="font-size:9px;color:#555">Max</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#666">${parkedDays}</div><div style="font-size:9px;color:#555">Jours garés</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor(st)}">${avg}</div><div style="font-size:9px;color:#666">Moy. km</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#CC0000">${min}</div><div style="font-size:9px;color:#666">Min</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1D9E75">${max}</div><div style="font-size:9px;color:#666">Max</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#888">${parkedWithKm}</div><div style="font-size:9px;color:#666">Garées</div></div>
       </div>
+      <div style="font-size:10px;color:#444;margin-top:5px">Jours ouvrés · ${entries.length} jours de données</div>
     </div>`;
   }).join('');
 }
@@ -1221,9 +1230,9 @@ function renderCoursiers(){
 }
 function renderCoursiersRanking(){
   const impactMap={};
-  S.entries.filter(e=>!e.parked&&e.driverId&&e.range).forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)).forEach(e=>{
     const d2=addDays(e.date,2);
-    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&!x.parked&&x.range!=null);
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
     if(!next)return;
     const delta=next.range-e.range;
     if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
