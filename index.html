@@ -469,6 +469,59 @@ select.fi option{background:#1a1a1a}
   </div>
 </div>
 
+<!-- ── VAN DETAIL MODAL ── -->
+<div class="overlay" id="modal-van-detail" style="align-items:flex-start;padding:0;overflow-y:auto">
+  <div style="background:#161616;border-radius:0 0 20px 20px;width:100%;max-width:480px;min-height:100svh;padding:0 0 40px;position:relative">
+    <div style="background:#0d0d0d;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #F0C000;position:sticky;top:0;z-index:10">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#F0C000" id="vd-title">Camionnette</div>
+        <div style="font-size:11px;color:#666" id="vd-sub"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="printVanDetail()" style="background:#F0C000;color:#111;border:none;padding:6px 12px;border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;cursor:pointer">🖨️ Imprimer</button>
+        <button onclick="closeModal('modal-van-detail')" style="background:none;border:1px solid #333;color:#888;padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <!-- Stat cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px" id="vd-stats"></div>
+      <!-- Chart -->
+      <div style="background:#1e1e1e;border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid #252525">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Évolution autonomie (jours ouvrés)</div>
+        <div style="height:220px;position:relative"><canvas id="vd-chart"></canvas></div>
+      </div>
+      <!-- Table -->
+      <div style="font-size:11px;font-weight:800;color:#F0C000;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Détail journalier</div>
+      <div id="vd-table"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── COURSIER DETAIL MODAL ── -->
+<div class="overlay" id="modal-coursier-detail" style="align-items:flex-start;padding:0;overflow-y:auto">
+  <div style="background:#161616;border-radius:0 0 20px 20px;width:100%;max-width:480px;min-height:100svh;padding:0 0 40px;position:relative">
+    <div style="background:#0d0d0d;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #F0C000;position:sticky;top:0;z-index:10">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#F0C000" id="cd-title">Coursier</div>
+        <div style="font-size:11px;color:#666" id="cd-sub"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="printCoursierDetail()" style="background:#F0C000;color:#111;border:none;padding:6px 12px;border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;cursor:pointer">🖨️ Imprimer</button>
+        <button onclick="closeModal('modal-coursier-detail')" style="background:none;border:1px solid #333;color:#888;padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px" id="cd-stats"></div>
+      <div style="background:#1e1e1e;border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid #252525">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Impact sur l'autonomie J+2 (jours ouvrés)</div>
+        <div style="height:220px;position:relative"><canvas id="cd-chart"></canvas></div>
+      </div>
+      <div style="font-size:11px;font-weight:800;color:#F0C000;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Détail par trajet</div>
+      <div id="cd-table"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ── STOCK MODALS ── -->
 <div class="overlay" id="modal-add-article">
   <div class="modal">
@@ -1169,13 +1222,13 @@ function renderVanList(){
     for(let i=0;i<10;i++){const d=addDays(tod,-i);if(isWeekend(d))continue;const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&x.range!=null);if(e)recent.push(e.range);}
     const avg=recent.length?Math.round(recent.reduce((s,x)=>s+x,0)/recent.length):null;
     const st=avg?getStatus(avg,v.nominal):'ok';
-    return`<div class="list-item">
+    return`<div class="list-item" style="cursor:pointer" onclick="openVanDetail('${v.id}')">
       <div style="flex:1">
-        <div style="font-weight:600;font-size:14px;color:#f0f0f0">${v.name}</div>
+        <div style="font-weight:600;font-size:14px;color:#f0f0f0">${v.name} <span style="font-size:10px;color:#555">→ détail</span></div>
         <div style="font-size:11px;color:#555;margin-top:2px">Nominal: ${v.nominal} km ${avg?`· Moy. 7j: <span style="color:${statusColor(st)};font-weight:700">${avg} km</span>`:''}</div>
       </div>
       <div class="ia-wrap" style="opacity:1">
-        <button class="ia-btn del" onclick="openConfirm('Supprimer ${v.name} ?',()=>{S.vans=S.vans.filter(x=>x.id!==\'${v.id}\');saveState('Supprimée');renderVanList();renderVanStats()})">✕</button>
+        <button class="ia-btn del" onclick="event.stopPropagation();openConfirm('Supprimer ${v.name} ?',()=>{S.vans=S.vans.filter(x=>x.id!==\'${v.id}\');saveState('Supprimée');renderVanList();renderVanStats()})">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -1190,7 +1243,7 @@ function renderVanStats(){
     const max=Math.max(...entries.map(e=>e.range));
     const st=getStatus(avg,v.nominal);
     const parkedWithKm=entries.filter(e=>e.parked).length;
-    return`<div class="card-sm">
+    return`<div class="card-sm" style="cursor:pointer" onclick="openVanDetail('${v.id}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:#f0f0f0">${v.name}</span>
         <span style="background:${statusColor(st)}22;color:${statusColor(st)};font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">${pct(avg,v.nominal)}% nominal</span>
@@ -1214,17 +1267,17 @@ function renderCoursiers(){
   const list=sortedCoursiers(S.coursiers).filter(c=>!q||c.fn.toLowerCase().includes(q)||c.ln.toLowerCase().includes(q));
   document.getElementById('coursiers-count').textContent=`${list.length} / ${S.coursiers.length}`;
   document.getElementById('coursiers-list').innerHTML=list.map((c,i)=>`
-    <div class="list-item">
+    <div class="list-item" style="cursor:pointer" onclick="openCoursierDetail('${c.id}')">
       <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0">
         <span class="num-badge">${String(i+1).padStart(2,'0')}</span>
         <div>
-          <div style="font-size:13px;color:#f0f0f0;font-weight:600">${c.fn} ${c.ln}</div>
+          <div style="font-size:13px;color:#f0f0f0;font-weight:600">${c.fn} ${c.ln} <span style="font-size:10px;color:#555">→ impact</span></div>
           <div style="font-size:10px;color:#555;margin-top:1px">${c.code}</div>
         </div>
       </div>
       <div class="ia-wrap">
-        <button class="ia-btn" onclick="openEditCoursier('${c.id}')">✎</button>
-        <button class="ia-btn del" onclick="openConfirm('Supprimer ${c.fn} ${c.ln} ?',()=>{S.coursiers=S.coursiers.filter(x=>x.id!==\'${c.id}\');saveState('Supprimé');renderCoursiers()})">✕</button>
+        <button class="ia-btn" onclick="event.stopPropagation();openEditCoursier('${c.id}')">✎</button>
+        <button class="ia-btn del" onclick="event.stopPropagation();openConfirm('Supprimer ${c.fn} ${c.ln} ?',()=>{S.coursiers=S.coursiers.filter(x=>x.id!==\'${c.id}\');saveState('Supprimé');renderCoursiers()})">✕</button>
       </div>
     </div>`).join('');
 }
@@ -1850,6 +1903,228 @@ function generateReport(){
       });
     });
   },200);
+}
+
+// ══════════════════════════════════════════════
+// VAN DETAIL
+// ══════════════════════════════════════════════
+let vdChart=null, cdChart=null;
+
+function openVanDetail(vanId){
+  const van=S.vans.find(v=>v.id===vanId);if(!van)return;
+  // All entries for this van, weekdays only, with km
+  const entries=S.entries.filter(e=>e.vanId===vanId&&e.range!=null&&!isWeekend(e.date))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(!entries.length){toast('Pas encore de données pour cette camionnette');return;}
+
+  document.getElementById('vd-title').textContent=van.name;
+  document.getElementById('vd-sub').textContent=`Autonomie nominale: ${van.nominal} km · ${entries.length} jours de données`;
+
+  // Stats
+  const ranges=entries.map(e=>e.range);
+  const avg=Math.round(ranges.reduce((s,x)=>s+x,0)/ranges.length);
+  const min=Math.min(...ranges), max=Math.max(...ranges);
+  const st=getStatus(avg,van.nominal);
+  document.getElementById('vd-stats').innerHTML=`
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:${statusColor(st)}">${avg}</div><div class="metric-lbl">Moy. km</div></div>
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#CC0000">${min}</div><div class="metric-lbl">Min km</div></div>
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#1D9E75">${max}</div><div class="metric-lbl">Max km</div></div>`;
+
+  // Chart data — autonomy + J-2 driver label
+  const labels=entries.map(e=>fmt(e.date));
+  const dataKm=entries.map(e=>e.range);
+  const nominal=entries.map(()=>van.nominal);
+
+  setTimeout(()=>{
+    const ctx=document.getElementById('vd-chart').getContext('2d');
+    if(vdChart)vdChart.destroy();
+    vdChart=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[
+        {label:`Nominal (${van.nominal} km)`,data:nominal,borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false},
+        {label:'Autonomie estimée',data:dataKm,borderColor:'#F0C000',backgroundColor:'#F0C00022',tension:0.3,pointRadius:5,pointHoverRadius:7,borderWidth:2.5,fill:true}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{color:'#ccc',font:{size:11},boxWidth:12}},
+          tooltip:{callbacks:{afterBody:items=>{
+            const e=entries[items[0]?.dataIndex];if(!e)return[];
+            const j2=driverJ2(vanId,e.date);
+            const drv=!e.parked?coursierName(e.driverId):'🅿 Garé';
+            return[`Chauffeur: ${drv}`,j2?`Responsable J-2: ${j2.fn} ${j2.ln}`:'J-2: pas de données'];
+          }}}
+        },
+        scales:{
+          y:{min:Math.max(0,min-20),ticks:{color:'#bbb',font:{size:11}},grid:{color:'#2a2a2a'},title:{display:true,text:'km',color:'#aaa',font:{size:11}}},
+          x:{ticks:{color:'#bbb',font:{size:10},maxRotation:45},grid:{color:'#222'}}
+        }
+      }
+    });
+  },50);
+
+  // Table
+  const tableRows=entries.slice().reverse().map(e=>{
+    const j2=driverJ2(vanId,e.date);
+    const st2=getStatus(e.range,van.nominal);
+    const stC=statusColor(st2);
+    const drv=!e.parked?coursierName(e.driverId):'🅿 Garé';
+    const diff=e.range-van.nominal;
+    return`<div style="background:#1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${stC}44;border-top:1px solid #252525;border-right:1px solid #252525;border-bottom:1px solid #252525">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:3px">${fmt(e.date)}${e.parked?' <span style="color:#888">🅿</span>':''}</div>
+          <div style="font-size:13px;color:#f0f0f0;font-weight:600">👤 ${drv}</div>
+          ${j2?`<div style="font-size:11px;color:#F0C000;margin-top:2px">Resp. J-2: ${j2.fn} ${j2.ln}</div>`:'<div style="font-size:11px;color:#444;margin-top:2px">J-2: pas de données</div>'}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range}</div>
+          <div style="font-size:10px;color:#555">km</div>
+          <div style="font-size:11px;font-weight:700;color:${diff>=0?'#1D9E75':'#CC0000'}">${diff>=0?'+':''}${diff}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('vd-table').innerHTML=tableRows||'<div style="color:#555;font-size:13px">Aucune donnée.</div>';
+
+  openModal('modal-van-detail');
+}
+
+function printVanDetail(){
+  const content=document.querySelector('#modal-van-detail > div');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Camionnette</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;padding:16px;color:#111}
+  .mc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+  .ms{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}
+  .mv{font-size:24px;font-weight:800}.ml{font-size:10px;color:#888;text-transform:uppercase;margin-top:2px}
+  .row{border:1px solid #eee;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between}
+  canvas{max-height:200px}@media print{button{display:none}}</style></head><body>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #CC0000">
+    <svg width="70" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
+    <text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+    <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg>
+    <div><div style="font-size:18px;font-weight:800;color:#CC0000">${document.getElementById('vd-title').textContent}</div>
+    <div style="font-size:11px;color:#888">${document.getElementById('vd-sub').textContent}</div></div>
+  </div>
+  ${document.getElementById('vd-stats').outerHTML.replace(/class="metric-card"/g,'class="ms"').replace(/class="metric-val[^"]*"/g,'class="mv"').replace(/class="metric-lbl"/g,'class="ml"')}
+  <div id="vd-table-print"></div>
+  <scr'+'ipt>
+  // Recreate table for print
+  const el=document.getElementById('vd-table-print');
+  el.innerHTML='<h3 style="margin:12px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#CC0000">Détail journalier</h3>'+
+  ${JSON.stringify(document.getElementById('vd-table').innerHTML)};
+  setTimeout(()=>window.print(),400);
+  <\/script></body></html>`);
+  w.document.close();
+}
+
+// ══════════════════════════════════════════════
+// COURSIER DETAIL
+// ══════════════════════════════════════════════
+function openCoursierDetail(coursierId){
+  const c=S.coursiers.find(x=>x.id===coursierId);if(!c)return;
+
+  // Find all entries driven by this coursier (weekdays), and their J+2 impact
+  const driven=S.entries.filter(e=>e.driverId===coursierId&&e.range!=null&&!isWeekend(e.date))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(!driven.length){toast(`Pas encore de données pour ${c.fn} ${c.ln}`);return;}
+
+  // Build impact data: for each drive, find J+2 entry on same van
+  const impactRows=driven.map(e=>{
+    const van=S.vans.find(v=>v.id===e.vanId);
+    const d2=addDays(e.date,2);
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    return{date:e.date,van,rangeJ0:e.range,rangeJ2:next?next.range:null,delta:next?next.range-e.range:null,parked:e.parked};
+  }).filter(r=>r.rangeJ2!=null);
+
+  document.getElementById('cd-title').textContent=`${c.fn} ${c.ln}`;
+  document.getElementById('cd-sub').textContent=`${driven.length} trajets · ${impactRows.length} impacts J+2 calculés · jours ouvrés`;
+
+  // Stats
+  const deltas=impactRows.map(r=>r.delta);
+  const avgDelta=deltas.length?Math.round(deltas.reduce((s,x)=>s+x,0)/deltas.length):null;
+  const positiveCount=deltas.filter(d=>d>=0).length;
+  const negativeCount=deltas.filter(d=>d<0).length;
+  const col=avgDelta==null?'#888':avgDelta>=0?'#1D9E75':'#CC0000';
+  document.getElementById('cd-stats').innerHTML=`
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:${col}">${avgDelta!=null?(avgDelta>=0?'+':'')+avgDelta:'—'}</div><div class="metric-lbl">Impact moy.</div></div>
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#1D9E75">${positiveCount}</div><div class="metric-lbl">✅ Positif</div></div>
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#CC0000">${negativeCount}</div><div class="metric-lbl">⚠️ Négatif</div></div>`;
+
+  // Chart
+  const chartRows=impactRows.slice(-20); // last 20 for readability
+  const labels=chartRows.map(r=>fmt(r.date));
+  const dataDeltas=chartRows.map(r=>r.delta);
+  const dataJ0=chartRows.map(r=>r.rangeJ0);
+  const dataJ2=chartRows.map(r=>r.rangeJ2);
+
+  setTimeout(()=>{
+    const ctx=document.getElementById('cd-chart').getContext('2d');
+    if(cdChart)cdChart.destroy();
+    cdChart=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[
+        {type:'line',label:'Autonomie J (trajet)',data:dataJ0,borderColor:'#888',borderDash:[4,3],borderWidth:1.5,pointRadius:3,fill:false,yAxisID:'y'},
+        {type:'line',label:'Autonomie J+2',data:dataJ2,borderColor:'#F0C000',borderWidth:2,pointRadius:4,fill:false,yAxisID:'y'},
+        {label:'Impact (Δ km)',data:dataDeltas,backgroundColor:dataDeltas.map(d=>d>=0?'#1D9E7566':'#CC000066'),borderColor:dataDeltas.map(d=>d>=0?'#1D9E75':'#CC0000'),borderWidth:1.5,yAxisID:'y2'}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#ccc',font:{size:10},boxWidth:10,padding:8}},
+          tooltip:{callbacks:{afterBody:items=>{const r=chartRows[items[0]?.dataIndex];return r?[`Van: ${r.van?.name||'?'}`]:[];}}}
+        },
+        scales:{
+          y:{position:'left',ticks:{color:'#bbb',font:{size:10}},grid:{color:'#2a2a2a'},title:{display:true,text:'km',color:'#aaa',font:{size:10}}},
+          y2:{position:'right',ticks:{color:'#bbb',font:{size:10}},grid:{drawOnChartArea:false},title:{display:true,text:'Δ km',color:'#aaa',font:{size:10}}},
+          x:{ticks:{color:'#bbb',font:{size:9},maxRotation:45},grid:{color:'#222'}}
+        }
+      }
+    });
+  },50);
+
+  // Table
+  const tableRows=impactRows.slice().reverse().map(r=>{
+    const dCol=r.delta>=0?'#1D9E75':'#CC0000';
+    return`<div style="background:#1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${dCol}44;border-top:1px solid #252525;border-right:1px solid #252525;border-bottom:1px solid #252525">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;color:#aaa">${fmt(r.date)} · <span style="color:#F0C000;font-weight:700">${r.van?.name||'?'}</span></div>
+          <div style="font-size:12px;color:#888;margin-top:3px">Jour J: <strong style="color:#ccc">${r.rangeJ0} km</strong> → J+2: <strong style="color:#ccc">${r.rangeJ2} km</strong></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${dCol};line-height:1">${r.delta>=0?'+':''}${r.delta}</div>
+          <div style="font-size:10px;color:#555">km impact</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('cd-table').innerHTML=tableRows||'<div style="color:#555;font-size:13px">Pas encore assez de données J+2.</div>';
+
+  openModal('modal-coursier-detail');
+}
+
+function printCoursierDetail(){
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Coursier</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;padding:16px;color:#111}
+  .mc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+  .ms{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}
+  .mv{font-size:24px;font-weight:800}.ml{font-size:10px;color:#888;text-transform:uppercase;margin-top:2px}
+  .row{border:1px solid #eee;border-radius:6px;padding:10px 12px;margin-bottom:6px}
+  @media print{button{display:none}}</style></head><body>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #CC0000">
+    <svg width="70" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
+    <text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
+    <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg>
+    <div><div style="font-size:18px;font-weight:800;color:#CC0000">${document.getElementById('cd-title').textContent}</div>
+    <div style="font-size:11px;color:#888">${document.getElementById('cd-sub').textContent}</div></div>
+  </div>
+  ${document.getElementById('cd-stats').outerHTML}
+  <h3 style="margin:12px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#CC0000">Détail des impacts J+2</h3>
+  ${document.getElementById('cd-table').innerHTML}
+  <scr'+'ipt>setTimeout(()=>window.print(),400);<\/scr'+'ipt></body></html>`);
+  w.document.close();
 }
 
 // ══════════════════════════════════════════════
