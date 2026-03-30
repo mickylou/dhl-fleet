@@ -79,7 +79,7 @@ body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100svh;displa
 /* === FORMS === */
 .form-row{display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap}
 .fg{display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px}
-.fg label{font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.fg label{font-size:11px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .fi{background:#121212;border:1px solid #2a2a2a;border-radius:7px;padding:8px 10px;font-size:13px;color:#f0f0f0;width:100%;font-family:'Barlow',sans-serif;transition:all .15s}
 .fi:focus{outline:none;border-color:#F0C000;background:#161616}
 .fi::placeholder{color:#444}
@@ -114,7 +114,7 @@ select.fi option{background:#1a1a1a}
 
 /* === TABLE === */
 .dtable{width:100%;border-collapse:collapse;font-size:12px}
-.dtable th{text-align:left;padding:8px 10px;border-bottom:1px solid #252525;font-weight:700;color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.dtable th{text-align:left;padding:8px 10px;border-bottom:1px solid #252525;font-weight:700;color:#ccc;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
 .dtable td{padding:8px 10px;border-bottom:1px solid #1e1e1e;color:#ccc}
 .dtable tr:last-child td{border-bottom:none}
 .dtable tr:hover td{background:#1e1e1e}
@@ -180,7 +180,8 @@ select.fi option{background:#1a1a1a}
 .report-body th{background:#f5f5f5;padding:5px 7px;border:1px solid #ddd;text-align:left;font-weight:700;font-size:9px;text-transform:uppercase;color:#555}
 .report-body td{padding:5px 7px;border:1px solid #ddd}
 .report-body tr:nth-child(even) td{background:#fafafa}
-.r-chart-wrap{height:150px;position:relative;margin:8px 0}
+.r-chart-wrap{height:150px;position:relative;margin:8px 0;break-inside:avoid;page-break-inside:avoid}
+.report-body table{break-inside:auto;page-break-inside:auto}
 .hidden-file{display:none}
 .vcb-label{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #2a2a2a;border-radius:7px;cursor:pointer;font-size:12px;color:#666;transition:all .15s}
 .vcb-label:has(input:checked){border-color:#F0C000;color:#F0C000;background:#F0C00011}
@@ -314,16 +315,13 @@ select.fi option{background:#1a1a1a}
     <div id="van-list"></div>
     <div class="sec-title" style="margin-top:8px">Statistiques par camionnette</div>
     <div id="van-stats"></div>
-    <div class="card" style="background:#111;border-color:#222;margin-top:8px">
-      <div style="font-size:12px;color:#555;line-height:1.6">💡 Les <strong style="color:#F0C000">chauffeurs</strong> sont gérés dans l'onglet <strong style="color:#F0C000">Équipe</strong>.</div>
-    </div>
   </div>
 
   <!-- ── COURSIERS ── -->
   <div class="tab-content" id="tab-coursiers" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div class="sec-title" style="margin-bottom:0">Équipe coursiers</div>
-      <span id="coursiers-count" style="font-size:11px;color:#555"></span>
+      <span id="coursiers-count" style="font-size:11px;color:#aaa"></span>
     </div>
     <input class="search-bar" id="coursiers-search" placeholder="🔍 Rechercher un coursier..." oninput="renderCoursiers()">
     <div id="coursiers-list"></div>
@@ -372,7 +370,7 @@ select.fi option{background:#1a1a1a}
 
     <div class="sec-title" style="margin-top:10px">Informations application</div>
     <div class="card" style="background:#111;border-color:#222">
-      <div style="font-size:12px;color:#888;line-height:1.9">
+      <div style="font-size:12px;color:#bbb;line-height:1.9">
         <div>📅 Date: <span style="color:#aaa" id="info-date"></span></div>
         <div>👤 Dernière modif: <span style="color:#aaa" id="info-lastmod"></span></div>
         <div>🚐 Camionnettes: <span style="color:#aaa" id="info-vans"></span></div>
@@ -385,22 +383,40 @@ select.fi option{background:#1a1a1a}
 
   <!-- ── RAPPORT ── -->
   <div class="tab-content" id="tab-rapport" style="display:none">
-    <div class="no-print" style="margin-bottom:12px">
+    <div class="no-print">
       <div class="sec-title">Paramètres du rapport</div>
       <div class="card">
         <div class="form-row">
           <div class="fg"><label>Du</label><input type="date" class="fi" id="r-from"></div>
           <div class="fg"><label>Au</label><input type="date" class="fi" id="r-to"></div>
         </div>
-        <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Camionnettes</div>
-        <div style="display:flex;gap:6px;margin-bottom:7px">
-          <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(true)">Tout</button>
-          <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(false)">Aucun</button>
+        <!-- Type de rapport -->
+        <div style="font-size:10px;color:#aaa;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Type de rapport</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button id="rtype-flotte" class="btn btn-y" onclick="setRapportType('flotte')" style="flex:1;font-size:11px;padding:7px 8px">🚐 Flotte complète</button>
+          <button id="rtype-van" class="btn btn-g" onclick="setRapportType('van')" style="flex:1;font-size:11px;padding:7px 8px">1 Camionnette</button>
+          <button id="rtype-coursier" class="btn btn-g" onclick="setRapportType('coursier')" style="flex:1;font-size:11px;padding:7px 8px">1 Coursier</button>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px" id="r-van-cbs"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-y" onclick="generateReport()">Générer le rapport</button>
-          <button class="btn btn-g" id="btn-print" style="display:none" onclick="window.print()">🖨️ Imprimer / PDF</button>
+        <!-- Sélection flotte -->
+        <div id="r-select-flotte">
+          <div style="font-size:10px;color:#aaa;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Camionnettes</div>
+          <div style="display:flex;gap:6px;margin-bottom:7px">
+            <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(true)">Tout</button>
+            <button class="btn btn-g" style="font-size:11px;padding:4px 10px" onclick="selAllVans(false)">Aucun</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px" id="r-van-cbs"></div>
+        </div>
+        <!-- Sélection van unique -->
+        <div id="r-select-van" style="display:none;margin-bottom:4px">
+          <div class="fg"><label>Camionnette</label><select class="fi" id="r-van-single"></select></div>
+        </div>
+        <!-- Sélection coursier unique -->
+        <div id="r-select-coursier" style="display:none;margin-bottom:4px">
+          <div class="fg"><label>Coursier</label><select class="fi" id="r-coursier-single"></select></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-y" onclick="generateReport()" style="flex:1">📊 Générer</button>
+          <button class="btn btn-g" id="btn-print" style="display:none;flex:1" onclick="window.print()">🖨️ Imprimer / PDF</button>
         </div>
       </div>
     </div>
@@ -993,41 +1009,42 @@ function renderDashboard(){
     const negatives=impactRanking.filter(r=>r.avg<0).reverse(); // worst first for negative
     const maxAbs=Math.max(...impactRanking.map(r=>Math.abs(r.avg)),1);
 
-    let html=`<div style="font-size:10px;color:#555;margin-bottom:10px;line-height:1.5">Impact mesuré = autonomie J+2 − autonomie le jour du trajet · ${impactRanking.length} chauffeur${impactRanking.length>1?'s':''} analysés</div>`;
+    let html=`<div style="font-size:11px;color:#aaa;margin-bottom:10px;line-height:1.5">Impact = autonomie J+2 − autonomie le jour du trajet · ${impactRanking.length} chauffeur${impactRanking.length>1?'s':''} analysés</div>`;
 
-    // Positive section
-    if(positives.length){
-      html+=`<div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">✅ Conduite économique — font progresser</div>`;
-      html+=positives.map((r,i)=>{
-        const barW=Math.round((r.avg/maxAbs)*100);
-        const medals=['🥇','🥈','🥉'];
-        return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #1D9E7522">
+    // Positive section — top 5
+    const top5pos=positives.slice(0,5);
+    if(top5pos.length){
+      html+=`<div style="font-size:11px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">✅ Top 5 — font progresser l'autonomie</div>`;
+      html+=top5pos.map((r,i)=>{
+        const barW=Math.round((Math.abs(r.avg)/maxAbs)*100);
+        const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+        return`<div style="background:#1a2a1a;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #1D9E7533">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-            <span style="font-size:12px;color:#ccc;font-weight:500">${medals[i]||''} ${coursierName(r.id)}</span>
-            <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#1D9E75">+${r.avg} km</span>
+            <span style="font-size:13px;color:#f0f0f0;font-weight:600">${medals[i]} ${coursierName(r.id)}</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#1D9E75">+${r.avg} km</span>
           </div>
-          <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+          <div style="background:#252525;border-radius:99px;height:5px;overflow:hidden">
             <div style="background:#1D9E75;height:100%;width:${barW}%;border-radius:99px"></div>
           </div>
-          <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+          <div style="font-size:10px;color:#aaa;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
         </div>`;
       }).join('');
     }
-
-    // Negative section
-    if(negatives.length){
-      html+=`<div style="font-size:10px;font-weight:800;color:#CC0000;text-transform:uppercase;letter-spacing:.8px;margin:10px 0 6px">⚠️ Conduite intensive — font descendre</div>`;
-      html+=negatives.map((r,i)=>{
+    const top5neg=negatives.slice(0,5);
+    if(top5neg.length){
+      html+=`<div style="font-size:11px;font-weight:800;color:#CC0000;text-transform:uppercase;letter-spacing:.8px;margin:12px 0 6px">⚠️ Top 5 — font descendre l'autonomie</div>`;
+      html+=top5neg.map((r,i)=>{
         const barW=Math.round((Math.abs(r.avg)/maxAbs)*100);
-        return`<div style="background:#1e1e1e;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #CC000022">
+        const bads=['💀','😱','😰','😟','😕'];
+        return`<div style="background:#2a1a1a;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #CC000033">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-            <span style="font-size:12px;color:#ccc;font-weight:500">⚠ ${coursierName(r.id)}</span>
-            <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#CC0000">${r.avg} km</span>
+            <span style="font-size:13px;color:#f0f0f0;font-weight:600">${bads[i]} ${coursierName(r.id)}</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#CC0000">${r.avg} km</span>
           </div>
-          <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
+          <div style="background:#252525;border-radius:99px;height:5px;overflow:hidden">
             <div style="background:#CC0000;height:100%;width:${barW}%;border-radius:99px"></div>
           </div>
-          <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+          <div style="font-size:10px;color:#aaa;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
         </div>`;
       }).join('');
     }
@@ -1041,7 +1058,7 @@ function renderDashboard(){
   rcEl.innerHTML=recent.map(e=>{
     const v=S.vans.find(x=>x.id===e.vanId);
     if(e.parked&&e.range==null)return`<div class="card-sm" style="opacity:.55;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:13px;font-weight:700;color:#666">${v?.name||'?'}</div><div style="font-size:11px;color:#555">${fmt(e.date)} · 🅿 Non utilisé</div></div>
+      <div><div style="font-size:13px;font-weight:700;color:#666">${v?.name||'?'}</div><div style="font-size:11px;color:#aaa">${fmt(e.date)} · 🅿 Non utilisé</div></div>
       <span style="font-size:12px;color:#555">— km</span></div>`;
     const st=e.parked?'warn':getStatus(e.range,v?.nominal);
     const stC=e.parked?'#888':statusColor(st);
@@ -1118,8 +1135,9 @@ function populateSaisieSelects(){
   const vs=document.getElementById('s-van');
   const ds=document.getElementById('s-driver');
   const prevVan=vs.value;
-  vs.innerHTML='<option value="">— Camionnette —</option>'+S.vans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
-  if(prevVan)vs.value=prevVan;
+  const activeVans=S.vans.filter(v=>!v.inGarage);
+  vs.innerHTML='<option value="">— Camionnette —</option>'+activeVans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  if(prevVan&&activeVans.find(v=>v.id===prevVan))vs.value=prevVan;
   ds.innerHTML='<option value="">— Chauffeur —</option>'+sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}">${c.fn} ${c.ln}</option>`).join('');
 }
 
@@ -1215,27 +1233,41 @@ function addVan(){
 }
 function renderVanList(){
   const el=document.getElementById('van-list');
-  if(!S.vans.length){el.innerHTML=`<div style="color:#444;font-size:13px;padding:8px">Aucune camionnette.</div>`;return;}
+  if(!S.vans.length){el.innerHTML=`<div style="color:#aaa;font-size:13px;padding:8px">Aucune camionnette.</div>`;return;}
   el.innerHTML=S.vans.map(v=>{
     const tod=today();
     const recent=[];
     for(let i=0;i<10;i++){const d=addDays(tod,-i);if(isWeekend(d))continue;const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&x.range!=null);if(e)recent.push(e.range);}
     const avg=recent.length?Math.round(recent.reduce((s,x)=>s+x,0)/recent.length):null;
     const st=avg?getStatus(avg,v.nominal):'ok';
-    return`<div class="list-item" style="cursor:pointer" onclick="openVanDetail('${v.id}')">
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:14px;color:#f0f0f0">${v.name} <span style="font-size:10px;color:#555">→ détail</span></div>
-        <div style="font-size:11px;color:#555;margin-top:2px">Nominal: ${v.nominal} km ${avg?`· Moy. 7j: <span style="color:${statusColor(st)};font-weight:700">${avg} km</span>`:''}</div>
+    const inGarage=!!v.inGarage;
+    return`<div class="list-item" style="cursor:pointer;${inGarage?'opacity:.6;border-color:#E8A00044':''}">
+      <div style="flex:1" onclick="openVanDetail('${v.id}')">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-weight:700;font-size:14px;color:#f0f0f0">${v.name}</span>
+          ${inGarage?'<span style="background:#E8A00022;color:#E8A000;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid #E8A00044">🔧 GARAGE</span>':'<span style="font-size:10px;color:#555">→ détail</span>'}
+        </div>
+        <div style="font-size:11px;color:#ccc;margin-top:2px">Nominal: ${v.nominal} km ${avg?`· Moy.: <span style="color:${statusColor(st)};font-weight:700">${avg} km</span>`:''}</div>
       </div>
-      <div class="ia-wrap" style="opacity:1">
+      <div style="display:flex;gap:5px;align-items:center">
+        <button onclick="event.stopPropagation();toggleVanGarage('${v.id}')" style="background:${inGarage?'#E8A000':'#1e1e1e'};color:${inGarage?'#111':'#888'};border:1px solid ${inGarage?'#E8A000':'#333'};padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:700;transition:all .15s" title="${inGarage?'Remettre en service':'Mettre au garage'}">${inGarage?'✓ Garage':'🔧'}</button>
         <button class="ia-btn del" onclick="event.stopPropagation();openConfirm('Supprimer ${v.name} ?',()=>{S.vans=S.vans.filter(x=>x.id!==\'${v.id}\');saveState('Supprimée');renderVanList();renderVanStats()})">✕</button>
       </div>
     </div>`;
   }).join('');
 }
+
+function toggleVanGarage(vanId){
+  const v=S.vans.find(x=>x.id===vanId);if(!v)return;
+  v.inGarage=!v.inGarage;
+  saveState(v.inGarage?`${v.name} mis au garage`:`${v.name} remis en service`);
+  renderVanList();renderVanStats();
+}
 function renderVanStats(){
   const el=document.getElementById('van-stats');
-  el.innerHTML=S.vans.map(v=>{
+  const activeVans=S.vans.filter(v=>!v.inGarage);
+  if(!activeVans.length){el.innerHTML='';return;}
+  el.innerHTML=activeVans.map(v=>{
     const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isWeekend(e.date));
     if(!entries.length)return`<div class="card-sm" style="opacity:.5"><div style="font-size:12px;color:#555">${v.name} — aucune donnée</div></div>`;
     const avg=Math.round(entries.reduce((s,e)=>s+e.range,0)/entries.length);
@@ -1249,12 +1281,12 @@ function renderVanStats(){
         <span style="background:${statusColor(st)}22;color:${statusColor(st)};font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">${pct(avg,v.nominal)}% nominal</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center">
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor(st)}">${avg}</div><div style="font-size:9px;color:#666">Moy. km</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#CC0000">${min}</div><div style="font-size:9px;color:#666">Min</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1D9E75">${max}</div><div style="font-size:9px;color:#666">Max</div></div>
-        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#888">${parkedWithKm}</div><div style="font-size:9px;color:#666">Garées</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${statusColor(st)}">${avg}</div><div style="font-size:9px;color:#bbb">Moy. km</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#CC0000">${min}</div><div style="font-size:9px;color:#bbb">Min</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1D9E75">${max}</div><div style="font-size:9px;color:#bbb">Max</div></div>
+        <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#888">${parkedWithKm}</div><div style="font-size:9px;color:#bbb">Garées</div></div>
       </div>
-      <div style="font-size:10px;color:#444;margin-top:5px">Jours ouvrés · ${entries.length} jours de données</div>
+      <div style="font-size:10px;color:#aaa;margin-top:5px">Jours ouvrés · ${entries.length} jours de données</div>
     </div>`;
   }).join('');
 }
@@ -1304,7 +1336,7 @@ function renderCoursiersRanking(){
   const maxAbs=Math.max(...ranking.map(r=>Math.abs(r.avg)),1);
   const positives=ranking.filter(r=>r.avg>=0);
   const negatives=ranking.filter(r=>r.avg<0).reverse();
-  let html=`<div style="font-size:10px;color:#555;margin-bottom:10px;line-height:1.5">
+  let html=`<div style="font-size:10px;color:#aaa;margin-bottom:10px;line-height:1.5">
     Impact = autonomie J+2 − autonomie le jour du trajet (même camionnette) · ${ranking.length} chauffeur${ranking.length>1?'s':''} analysés
   </div>`;
   if(positives.length){
@@ -1320,7 +1352,7 @@ function renderCoursiersRanking(){
         <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
           <div style="background:#1D9E75;height:100%;width:${barW}%;border-radius:99px"></div>
         </div>
-        <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+        <div style="font-size:10px;color:#aaa;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
       </div>`;
     }).join('');
   }
@@ -1336,7 +1368,7 @@ function renderCoursiersRanking(){
         <div style="background:#252525;border-radius:99px;height:4px;overflow:hidden">
           <div style="background:#CC0000;height:100%;width:${barW}%;border-radius:99px"></div>
         </div>
-        <div style="font-size:10px;color:#444;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
+        <div style="font-size:10px;color:#aaa;margin-top:3px">${r.count} trajet${r.count>1?'s':''} analysés</div>
       </div>`;
     }).join('');
   }
@@ -1570,7 +1602,7 @@ function renderStock(){
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div class="s-qty" style="color:${col}">${fmtNum(a.qty)}</div>
-              <div style="font-size:11px;color:#555">${a.unit}</div>
+              <div style="font-size:11px;color:#aaa">${a.unit}</div>
               <div style="font-size:10px;color:${col};font-weight:700;margin-top:2px">${stockStatusLabel(st)}</div>
             </div>
           </div>
@@ -1789,86 +1821,119 @@ function printStock(){
 function renderReportControls(){
   document.getElementById('r-from').value=addDays(today(),-30);
   document.getElementById('r-to').value=today();
-  document.getElementById('r-van-cbs').innerHTML=S.vans.map(v=>`
+  // Flotte checkboxes
+  const activeVans=S.vans.filter(v=>!v.inGarage);
+  document.getElementById('r-van-cbs').innerHTML=activeVans.map(v=>`
     <label class="vcb-label"><input type="checkbox" class="r-van-cb" value="${v.id}" checked style="width:auto">${v.name}</label>`).join('')
-    ||'<span style="font-size:12px;color:#555">Aucune camionnette enregistrée.</span>';
+    ||'<span style="font-size:12px;color:#aaa">Aucune camionnette active.</span>';
+  // Single van select
+  document.getElementById('r-van-single').innerHTML=activeVans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  // Single coursier select
+  document.getElementById('r-coursier-single').innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}">${c.fn} ${c.ln}</option>`).join('');
+  // Default type
+  setRapportType('flotte');
 }
 function selAllVans(val){document.querySelectorAll('.r-van-cb').forEach(cb=>cb.checked=val);}
+
+let rType='flotte';
+function setRapportType(type){
+  rType=type;
+  ['flotte','van','coursier'].forEach(t=>{
+    const btn=document.getElementById('rtype-'+t);
+    if(btn){btn.className=t===type?'btn btn-y':'btn btn-g';}
+    const sel=document.getElementById('r-select-'+t);
+    if(sel)sel.style.display=t===type?'':'none';
+  });
+}
+
+function dhlLogoSVG(w){return `<svg width="${w}" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/><text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text><polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg>`;}
 
 function generateReport(){
   const from=document.getElementById('r-from').value,to=document.getElementById('r-to').value;
   if(!from||!to)return toast('Définissez une période');
-  const selIds=[...document.querySelectorAll('.r-van-cb:checked')].map(c=>c.value);
-  if(!selIds.length)return toast('Sélectionnez au moins une camionnette');
   Object.values(rCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+  document.getElementById('btn-print').style.display='none';
+
+  if(rType==='coursier'){generateCoursierReport(from,to);return;}
+
+  const selIds=rType==='van'
+    ?[document.getElementById('r-van-single').value].filter(Boolean)
+    :[...document.querySelectorAll('.r-van-cb:checked')].map(c=>c.value);
+  if(!selIds.length)return toast('Sélectionnez au moins une camionnette');
+
   const vans=S.vans.filter(v=>selIds.includes(v.id));
-  const allE=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&!e.parked);
+  const allE=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&e.range!=null&&!isWeekend(e.date));
 
   let html=`<div class="report-body">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;padding-bottom:12px;border-bottom:3px solid #CC0000">
-      <svg width="88" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
-        <text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
-        <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/>
-      </svg>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:12px;border-bottom:3px solid #CC0000">
+      ${dhlLogoSVG(80)}
       <div>
-        <div class="r-h1" style="border:none;margin:0">Rapport autonomie — Flotte électrique</div>
-        <div class="r-sub" style="margin:3px 0 0">Période: ${fmt(from)} au ${fmt(to)} · Généré le ${fmt(today())} par ${S.currentAdmin?.name||'?'}</div>
+        <div class="r-h1">Rapport autonomie — ${rType==='van'?vans[0]?.name:'Flotte électrique'}</div>
+        <div class="r-sub">Période: ${fmt(from)} au ${fmt(to)} · Généré le ${fmt(today())} par ${S.currentAdmin?.name||'?'}</div>
       </div>
     </div>`;
 
-  if(allE.length){
+  if(allE.length&&rType==='flotte'){
     const gavg=Math.round(allE.reduce((s,e)=>s+e.range,0)/allE.length);
     const gmin=allE.reduce((a,b)=>a.range<b.range?a:b);
     const gmax=allE.reduce((a,b)=>a.range>b.range?a:b);
     const vmin=S.vans.find(v=>v.id===gmin.vanId),vmax=S.vans.find(v=>v.id===gmax.vanId);
-    const parkedTotal=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&e.parked).length;
     html+=`<div class="r-h2">Synthèse globale — ${vans.length} camionnette${vans.length>1?'s':''}</div>
     <div class="r-sg">
       <div class="r-sc"><div class="r-sv">${gavg} km</div><div class="r-sl">Moyenne générale</div></div>
       <div class="r-sc"><div class="r-sv" style="color:#CC0000">${gmin.range} km</div><div class="r-sl">Min (${vmin?.name||'?'})</div></div>
       <div class="r-sc"><div class="r-sv" style="color:#1D9E75">${gmax.range} km</div><div class="r-sl">Max (${vmax?.name||'?'})</div></div>
-      <div class="r-sc"><div class="r-sv">${allE.length}</div><div class="r-sl">Jours avec saisie</div></div>
-    </div>
-    ${parkedTotal?`<div style="font-size:10px;color:#aaa;margin-bottom:8px">🅿 ${parkedTotal} jour${parkedTotal>1?'s':''} de non-utilisation (exclus des calculs)</div>`:''}`;
-    // Driver ranking in report
-    const drvMap={};
-    allE.forEach(e=>{if(!drvMap[e.driverId])drvMap[e.driverId]={sum:0,count:0};drvMap[e.driverId].sum+=e.range;drvMap[e.driverId].count++;});
-    const drvRanking=Object.entries(drvMap).map(([id,v])=>({id,avg:Math.round(v.sum/v.count),count:v.count})).sort((a,b)=>b.avg-a.avg);
-    if(drvRanking.length){
-      html+=`<div class="r-h2">Classement chauffeurs</div><table>
-        <thead><tr><th>#</th><th>Chauffeur</th><th>Autonomie moy.</th><th>Jours</th></tr></thead>
-        <tbody>${drvRanking.map((r,i)=>`<tr><td>${i+1}</td><td>${coursierName(r.id)}</td><td style="font-weight:800;color:${i===0?'#1D9E75':'#111'}">${r.avg} km</td><td>${r.count}j</td></tr>`).join('')}</tbody>
-      </table>`;
+      <div class="r-sc"><div class="r-sv">${allE.length}</div><div class="r-sl">Jours de données</div></div>
+    </div>`;
+    // Impact ranking in report
+    const impMap={};
+    allE.filter(e=>e.driverId).forEach(e=>{
+      const d2=addDays(e.date,2);
+      const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null);
+      if(!next)return;
+      if(!impMap[e.driverId])impMap[e.driverId]={deltas:[],count:0};
+      impMap[e.driverId].deltas.push(next.range-e.range);
+      impMap[e.driverId].count++;
+    });
+    const impRank=Object.entries(impMap).map(([id,v])=>({id,avg:Math.round(v.deltas.reduce((s,x)=>s+x,0)/v.deltas.length),count:v.count})).sort((a,b)=>b.avg-a.avg);
+    if(impRank.length){
+      const pos=impRank.filter(r=>r.avg>=0).slice(0,5);
+      const neg=impRank.filter(r=>r.avg<0).reverse().slice(0,5);
+      html+=`<div class="r-h2">Impact conducteurs sur l'autonomie (J+2)</div>
+      <table><thead><tr><th>#</th><th>Chauffeur</th><th>Impact moy.</th><th>Trajets</th></tr></thead><tbody>`;
+      pos.forEach((r,i)=>{html+=`<tr><td>${['🥇','🥈','🥉','4','5'][i]}</td><td>${coursierName(r.id)}</td><td style="color:#1D9E75;font-weight:800">+${r.avg} km</td><td>${r.count}j</td></tr>`;});
+      neg.forEach((r,i)=>{html+=`<tr><td>${['💀','😱','😰','😟','😕'][i]}</td><td>${coursierName(r.id)}</td><td style="color:#CC0000;font-weight:800">${r.avg} km</td><td>${r.count}j</td></tr>`;});
+      html+=`</tbody></table>`;
     }
-  }else{html+=`<div style="color:#888;font-size:12px;padding:12px 0">Aucune saisie pour cette période.</div>`;}
+  }
 
   vans.forEach(van=>{
-    const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
-    const veA=ve.filter(e=>!e.parked);
+    const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
+    const veKm=ve.filter(e=>e.range!=null);
     if(!ve.length)return;
-    const avg=veA.length?Math.round(veA.reduce((s,e)=>s+e.range,0)/veA.length):0;
-    const min=veA.length?Math.min(...veA.map(e=>e.range)):0;
-    const max=veA.length?Math.max(...veA.map(e=>e.range)):0;
-    const p=pct(avg,van.nominal),st=getStatus(avg,van.nominal);
+    const avg=veKm.length?Math.round(veKm.reduce((s,e)=>s+e.range,0)/veKm.length):0;
+    const max=veKm.length?Math.max(...veKm.map(e=>e.range)):0;
     const parkedDays=ve.filter(e=>e.parked).length;
-    html+=`<div class="r-h2">${van.name} — Nominal: ${van.nominal} km</div>
+    // break-inside:avoid keeps each van on same page
+    html+=`<div style="break-inside:avoid;page-break-inside:avoid;margin-top:16px">
+    <div class="r-h2">${van.name}</div>
     <div class="r-sg">
-      <div class="r-sc"><div class="r-sv">${avg} km</div><div class="r-sl">Moyenne</div></div>
-      <div class="r-sc"><div class="r-sv" style="color:${statusColor(st)}">${p}%</div><div class="r-sl">% Nominal</div></div>
-      <div class="r-sc"><div class="r-sv" style="color:#CC0000">${min} km</div><div class="r-sl">Minimum</div></div>
+      <div class="r-sc"><div class="r-sv">${avg} km</div><div class="r-sl">Moy. autonomie</div></div>
       <div class="r-sc"><div class="r-sv" style="color:#1D9E75">${max} km</div><div class="r-sl">Maximum</div></div>
+      <div class="r-sc"><div class="r-sv">${veKm.length}</div><div class="r-sl">Jours données</div></div>
+      <div class="r-sc"><div class="r-sv" style="color:#E8A000">${parkedDays}</div><div class="r-sl">Jours garés</div></div>
     </div>
-    ${parkedDays?`<div style="font-size:10px;color:#aaa;margin-bottom:8px">🅿 ${parkedDays} jour${parkedDays>1?'s':''} sans utilisation</div>`:''}
     <div class="r-chart-wrap"><canvas id="rc-${van.id}"></canvas></div>
-    <table><thead><tr>
-      <th>Date</th><th>Autonomie</th><th>% Nom.</th><th>Statut</th><th>Chauffeur du jour</th><th>Chauffeur J-2</th>
+    <table style="break-inside:avoid;page-break-inside:avoid"><thead><tr>
+      <th>Date</th><th>Autonomie</th><th>Statut</th><th>Chauffeur</th><th>Resp. J-2</th>
     </tr></thead><tbody>
     ${ve.map(e=>{
-      if(e.parked)return`<tr style="color:#aaa;background:#fafafa"><td>${fmt(e.date)}</td><td colspan="4" style="font-style:italic;color:#bbb">🅿 Véhicule non utilisé${e.range!=null?' — Batterie: '+e.range+' km':''}</td><td>—</td></tr>`;
+      if(e.parked&&e.range==null)return`<tr style="background:#fafafa"><td>${fmt(e.date)}</td><td colspan="4" style="color:#bbb;font-style:italic">🅿 Garé — sans km</td></tr>`;
+      if(e.parked)return`<tr style="background:#fffbf0"><td>${fmt(e.date)}</td><td style="color:#888">${e.range} km</td><td style="color:#E8A000">🅿 Garé</td><td>—</td><td>—</td></tr>`;
       const dr2=driverJ2(van.id,e.date);
-      const p2=pct(e.range,van.nominal),st2=getStatus(e.range,van.nominal),col=statusColor(st2);
-      return`<tr><td>${fmt(e.date)}</td><td style="font-weight:800">${e.range} km</td><td style="color:${col};font-weight:700">${p2}%</td><td style="color:${col}">${statusLabel(st2)}</td><td>${coursierName(e.driverId)}</td><td style="font-weight:${dr2?'700':'400'};color:${dr2?'#111':'#999'}">${dr2?`${dr2.fn} ${dr2.ln}`:'— (pas de données)'}</td></tr>`;
-    }).join('')}</tbody></table>`;
+      const st2=getStatus(e.range,van.nominal),col=statusColor(st2);
+      return`<tr><td>${fmt(e.date)}</td><td style="font-weight:800">${e.range} km</td><td style="color:${col}">${statusLabel(st2)}</td><td>${coursierName(e.driverId)}</td><td style="font-weight:${dr2?'700':'400'};color:${dr2?'#111':'#999'}">${dr2?`${dr2.fn} ${dr2.ln}`:'—'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
   });
 
   html+='</div>';
@@ -1878,25 +1943,21 @@ function generateReport(){
 
   setTimeout(()=>{
     vans.forEach(van=>{
-      const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+      const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
       if(!ve.length)return;
       const ctx=document.getElementById('rc-'+van.id);if(!ctx)return;
       const labels=ve.map(e=>fmt(e.date));
-      const data=ve.map(e=>e.parked?null:e.range);
-      const bgC=data.map(d=>d===null?'#f0f0f033':getStatus(d,van.nominal)==='ok'?'#1D9E7555':getStatus(d,van.nominal)==='warn'?'#E8A00055':'#CC000055');
-      const bdC=data.map(d=>d===null?'#ccc':getStatus(d,van.nominal)==='ok'?'#1D9E75':getStatus(d,van.nominal)==='warn'?'#E8A000':'#CC0000');
+      const data=ve.map(e=>e.range!=null?e.range:null);
+      const bgC=data.map((d,i)=>ve[i].parked?'#E8A00044':d===null?'transparent':getStatus(d,van.nominal)==='ok'?'#1D9E7555':getStatus(d,van.nominal)==='warn'?'#E8A00055':'#CC000055');
+      const bdC=data.map((d,i)=>ve[i].parked?'#E8A000':d===null?'transparent':getStatus(d,van.nominal)==='ok'?'#1D9E75':getStatus(d,van.nominal)==='warn'?'#E8A000':'#CC0000');
       rCharts[van.id]=new Chart(ctx.getContext('2d'),{
-        type:'bar',
-        data:{labels,datasets:[
-          {type:'line',label:'Nominal ('+van.nominal+'km)',data:ve.map(e=>e.parked?null:van.nominal),borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:0,spanGaps:true},
-          {label:'Autonomie estimée',data,backgroundColor:bgC,borderColor:bdC,borderWidth:1.5,order:1}
+        type:'bar',data:{labels,datasets:[
+          {type:'line',label:`Nominal (${van.nominal}km)`,data:ve.map(()=>van.nominal),borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:0},
+          {label:'Autonomie',data,backgroundColor:bgC,borderColor:bdC,borderWidth:1.5,order:1}
         ]},
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{labels:{font:{size:10},boxWidth:10}},
-            tooltip:{callbacks:{
-              label:i=>{if(i.dataset.label.startsWith('Nominal'))return null;const e=ve[i.dataIndex];if(!e)return null;return e.parked?'🅿 Non utilisé':'Autonomie: '+e.range+' km';},
-              afterBody:items=>{const e=ve[items[0]?.dataIndex];if(!e||e.parked)return[];const dr2=driverJ2(van.id,e.date);return[`Chauffeur: ${coursierName(e.driverId)}`,dr2?`J-2: ${dr2.fn} ${dr2.ln}`:'J-2: pas de données'];}
-            }}
+            tooltip:{callbacks:{afterBody:items=>{const e=ve[items[0]?.dataIndex];if(!e||e.parked)return[];const dr2=driverJ2(van.id,e.date);return[`Chauffeur: ${coursierName(e.driverId)}`,dr2?`J-2: ${dr2.fn} ${dr2.ln}`:''];}}}
           },
           scales:{y:{beginAtZero:false,ticks:{font:{size:10}},title:{display:true,text:'km',font:{size:10}}},x:{ticks:{font:{size:9},maxRotation:45}}}
         }
@@ -1904,6 +1965,44 @@ function generateReport(){
     });
   },200);
 }
+
+function generateCoursierReport(from,to){
+  const cId=document.getElementById('r-coursier-single').value;
+  if(!cId)return toast('Sélectionnez un coursier');
+  const c=S.coursiers.find(x=>x.id===cId);if(!c)return;
+  const driven=S.entries.filter(e=>e.driverId===cId&&e.range!=null&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
+  const impactRows=driven.map(e=>{
+    const van=S.vans.find(v=>v.id===e.vanId);
+    const d2=addDays(e.date,2);
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    return{date:e.date,van,rangeJ0:e.range,rangeJ2:next?next.range:null,delta:next?next.range-e.range:null};
+  }).filter(r=>r.rangeJ2!=null);
+  const deltas=impactRows.map(r=>r.delta);
+  const avgD=deltas.length?Math.round(deltas.reduce((s,x)=>s+x,0)/deltas.length):null;
+  const pos=deltas.filter(d=>d>=0).length, neg=deltas.filter(d=>d<0).length;
+  const col=avgD==null?'#888':avgD>=0?'#1D9E75':'#CC0000';
+  let html=`<div class="report-body">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:12px;border-bottom:3px solid #CC0000">
+      ${dhlLogoSVG(80)}
+      <div><div class="r-h1">Impact conducteur — ${c.fn} ${c.ln}</div>
+      <div class="r-sub">Période: ${fmt(from)} au ${fmt(to)} · ${driven.length} trajets · ${impactRows.length} impacts J+2</div></div>
+    </div>
+    <div class="r-sg">
+      <div class="r-sc"><div class="r-sv" style="color:${col}">${avgD!=null?(avgD>=0?'+':'')+avgD+' km':'—'}</div><div class="r-sl">Impact moyen</div></div>
+      <div class="r-sc"><div class="r-sv" style="color:#1D9E75">${pos}</div><div class="r-sl">✅ Trajets positifs</div></div>
+      <div class="r-sc"><div class="r-sv" style="color:#CC0000">${neg}</div><div class="r-sl">⚠️ Trajets négatifs</div></div>
+      <div class="r-sc"><div class="r-sv">${driven.length}</div><div class="r-sl">Total trajets</div></div>
+    </div>
+    <div class="r-h2">Détail des impacts J+2</div>
+    <table><thead><tr><th>Date trajet</th><th>Camionnette</th><th>Autonomie J</th><th>Autonomie J+2</th><th>Impact</th></tr></thead><tbody>
+    ${impactRows.map(r=>{const dc=r.delta>=0?'#1D9E75':'#CC0000';return`<tr><td>${fmt(r.date)}</td><td><strong>${r.van?.name||'?'}</strong></td><td>${r.rangeJ0} km</td><td>${r.rangeJ2} km</td><td style="font-weight:800;color:${dc}">${r.delta>=0?'+':''}${r.delta} km</td></tr>`;}).join('')}
+    </tbody></table>
+  </div>`;
+  document.getElementById('report-output').innerHTML=html;
+  document.getElementById('btn-print').style.display='inline-block';
+  toast('Rapport généré ✓');
+}
+
 
 // ══════════════════════════════════════════════
 // VAN DETAIL
@@ -1927,8 +2026,8 @@ function openVanDetail(vanId){
   const st=getStatus(avg,van.nominal);
   document.getElementById('vd-stats').innerHTML=`
     <div class="metric-card"><div class="metric-val" style="font-size:22px;color:${statusColor(st)}">${avg}</div><div class="metric-lbl">Moy. km</div></div>
-    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#CC0000">${min}</div><div class="metric-lbl">Min km</div></div>
-    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#1D9E75">${max}</div><div class="metric-lbl">Max km</div></div>`;
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#1D9E75">${max}</div><div class="metric-lbl">Max km</div></div>
+    <div class="metric-card"><div class="metric-val" style="font-size:22px;color:#888">${entries.length}</div><div class="metric-lbl">Jours</div></div>`;
 
   // Chart data — autonomy + J-2 driver label
   const labels=entries.map(e=>fmt(e.date));
