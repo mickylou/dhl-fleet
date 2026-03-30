@@ -272,34 +272,36 @@ select.fi option{background:#1a1a1a}
         <div class="fg"><label>Camionnette</label><select class="fi" id="s-van" onchange="refreshVanStatus()"></select></div>
       </div>
       <div id="van-status-bar" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px"></div>
-      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;padding:10px 12px;background:#121212;border-radius:8px;border:1px solid #252525">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex:1">
-          <div style="position:relative;width:36px;height:20px;flex-shrink:0">
-            <input type="checkbox" id="s-parked" onchange="toggleParked(this.checked)" style="opacity:0;width:0;height:0;position:absolute">
-            <div id="s-pk-track" style="position:absolute;inset:0;background:#2a2a2a;border-radius:10px;transition:background .2s"></div>
-            <div id="s-pk-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#555;border-radius:50%;transition:all .2s"></div>
-          </div>
-          <div>
-            <div style="font-size:12px;color:#aaa" id="s-pk-label">Véhicule non utilisé ce jour</div>
-            <div style="font-size:10px;color:#555">Garée / maintenance / weekend</div>
-          </div>
-        </label>
+
+      <!-- 3-état : roulé / à quai / garage -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Statut du véhicule</div>
+        <div style="display:flex;gap:6px">
+          <button id="s-mode-route" onclick="setVanMode('route')" class="btn" style="flex:1;font-size:12px;padding:9px 6px;background:#1D9E75;color:#fff;border:none">🚐 A roulé</button>
+          <button id="s-mode-quai" onclick="setVanMode('quai')" class="btn" style="flex:1;font-size:12px;padding:9px 6px;background:#1e1e1e;color:#aaa;border:1px solid #333">🅿 À quai</button>
+          <button id="s-mode-garage" onclick="setVanMode('garage')" class="btn" style="flex:1;font-size:12px;padding:9px 6px;background:#1e1e1e;color:#aaa;border:1px solid #333">🔧 Garage</button>
+        </div>
       </div>
+
+      <!-- Chauffeur — visible si "route" -->
       <div id="s-driver-row" class="form-row" style="margin-bottom:8px">
         <div class="fg"><label>Chauffeur du jour</label><select class="fi" id="s-driver"></select></div>
       </div>
-      <div class="form-row" style="margin-bottom:10px">
+      <!-- KM — visible si "route" ou "quai" -->
+      <div id="s-range-row" class="form-row" style="margin-bottom:10px">
         <div class="fg">
           <label id="s-range-label">Autonomie estimée (km)</label>
           <input type="number" class="fi" id="s-range" placeholder="ex: 180" min="0" max="999">
         </div>
       </div>
+      <!-- Info mode -->
+      <div id="s-mode-info" style="display:none;padding:8px 11px;border-radius:7px;margin-bottom:10px;font-size:12px"></div>
       <div id="s-j2-info" style="display:none;padding:8px 11px;background:#1D9E7511;border:1px solid #1D9E7530;border-radius:7px;margin-bottom:10px;font-size:12px;color:#1D9E75"></div>
       <button class="btn btn-y btn-full" onclick="addEntry()">✓ Enregistrer la saisie</button>
     </div>
     <div class="sec-title">Saisies enregistrées</div>
     <div id="entries-list"></div>
-    <div id="entries-empty" style="padding:24px;text-align:center;color:#444;font-size:13px;display:none">Aucune saisie enregistrée.</div>
+    <div id="entries-empty" style="padding:24px;text-align:center;color:#aaa;font-size:13px;display:none">Aucune saisie enregistrée.</div>
   </div>
 
   <!-- ── FLOTTE ── -->
@@ -429,8 +431,16 @@ select.fi option{background:#1a1a1a}
 <div class="overlay" id="modal-edit-entry">
   <div class="modal">
     <div class="modal-title">Modifier la saisie</div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Statut du véhicule</label>
+      <select class="fi" id="ee-mode" onchange="onEditModeChange(this.value)" style="width:100%">
+        <option value="route">🚐 A roulé</option>
+        <option value="quai">🅿 À quai</option>
+        <option value="garage">🔧 Au garage</option>
+      </select>
+    </div>
     <div class="fg" id="ee-driver-row" style="margin-bottom:8px"><label>Chauffeur</label><select class="fi" id="ee-driver" style="width:100%"></select></div>
-    <div class="fg" style="margin-bottom:0"><label>Autonomie (km)</label><input type="number" class="fi" id="ee-range" style="width:100%"></div>
+    <div class="fg" id="ee-range-row" style="margin-bottom:0"><label>Autonomie / km batterie</label><input type="number" class="fi" id="ee-range" style="width:100%" min="0"></div>
     <div class="modal-btns">
       <button class="btn btn-y" onclick="saveEditEntry()">Enregistrer</button>
       <button class="btn btn-g" onclick="closeModal('modal-edit-entry')">Annuler</button>
@@ -787,10 +797,19 @@ function coursierName(id){
   return c?`${c.fn} ${c.ln}`:'—';
 }
 function driverJ2(vanId,date){
-  const d2=addDays(date,-2);
-  const e=S.entries.find(x=>x.vanId===vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
-  if(!e)return null;
-  return S.coursiers.find(c=>c.id===e.driverId)||null;
+  // Look back up to 7 days to find the last driver who actually drove (mode=route)
+  // Skip "à quai" days — they don't change the J-2 responsibility
+  // Skip "garage" days — van was out of service
+  for(let i=1;i<=7;i++){
+    const d=addDays(date,-i);
+    if(isWeekend(d))continue;
+    const e=S.entries.find(x=>x.vanId===vanId&&x.date===d);
+    if(!e)continue; // no entry = not recorded
+    if(e.mode==='garage')continue; // at garage, skip
+    if(e.parked&&e.mode==='quai')continue; // à quai, skip (driver still counts as J-2 from before)
+    if(e.driverId)return S.coursiers.find(c=>c.id===e.driverId)||null;
+  }
+  return null;
 }
 function sortedCoursiers(list){
   return[...list].sort((a,b)=>{
@@ -906,7 +925,7 @@ function isWeekend(dateStr){
 function renderDashboard(){
   const tod=today();
   // Include parked entries that have km (range!=null), exclude weekends
-  const todE=S.entries.filter(e=>e.date===tod&&e.range!=null&&!isWeekend(tod));
+  const todE=S.entries.filter(e=>e.date===tod&&e.range!=null&&!isWeekend(tod)&&e.mode!=='garage');
   let avgKm='—',alertCount=0,saisieToday=0;
   if(todE.length){
     const avg=todE.reduce((s,e)=>s+e.range,0)/todE.length;
@@ -919,7 +938,7 @@ function renderDashboard(){
   for(let i=6;i>=0;i--){
     const d=addDays(tod,-i);
     if(isWeekend(d))continue;
-    const de=S.entries.filter(e=>e.date===d&&e.range!=null);
+    const de=S.entries.filter(e=>e.date===d&&e.range!=null&&e.mode!=='garage');
     if(de.length)last7.push(de.reduce((s,e)=>s+e.range,0)/de.length);
   }
   let trend='—',trendClass='';
@@ -961,7 +980,7 @@ function renderDashboard(){
   const cols=['#F0C000','#1D9E75','#378ADD','#E8A000','#D85A30','#8B5CF6','#EC4899'];
   S.vans.slice(0,7).forEach((van,idx)=>{
     const data=chartDays.map(d=>{
-      const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&x.range!=null);
+      const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&x.range!=null&&x.mode!=='garage');
       return e?e.range:null;
     });
     datasets.push({label:van.name,data,borderColor:cols[idx%7],backgroundColor:cols[idx%7]+'18',tension:0.35,spanGaps:false,pointRadius:4,pointHoverRadius:6,borderWidth:2});
@@ -983,7 +1002,7 @@ function renderDashboard(){
 
   // ── IMPACT RANKING ── (all entries with km, excluding weekends)
   const impactMap={};
-  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)).forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage').forEach(e=>{
     const d2=addDays(e.date,2);
     const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
     if(!nextEntry)return;
@@ -1090,20 +1109,39 @@ function renderDashboard(){
 // ══════════════════════════════════════════════
 // SAISIE
 // ══════════════════════════════════════════════
-function toggleParked(checked){
-  const track=document.getElementById('s-pk-track');
-  const thumb=document.getElementById('s-pk-thumb');
-  const label=document.getElementById('s-pk-label');
+let vanMode='route'; // 'route' | 'quai' | 'garage'
+
+function setVanMode(mode){
+  vanMode=mode;
+  const btnRoute=document.getElementById('s-mode-route');
+  const btnQuai=document.getElementById('s-mode-quai');
+  const btnGarage=document.getElementById('s-mode-garage');
   const driverRow=document.getElementById('s-driver-row');
+  const rangeRow=document.getElementById('s-range-row');
   const rangeLabel=document.getElementById('s-range-label');
-  if(checked){
-    track.style.background='#E8A000';thumb.style.background='#111';thumb.style.left='18px';
-    label.style.color='#E8A000';driverRow.style.display='none';
-    rangeLabel.textContent='Km au départ / niveau batterie (optionnel)';
-  }else{
-    track.style.background='#2a2a2a';thumb.style.background='#555';thumb.style.left='2px';
-    label.style.color='#aaa';driverRow.style.display='';
+  const modeInfo=document.getElementById('s-mode-info');
+
+  // Reset button styles
+  [btnRoute,btnQuai,btnGarage].forEach(b=>{if(b){b.style.background='#1e1e1e';b.style.color='#aaa';b.style.border='1px solid #333';}});
+
+  if(mode==='route'){
+    if(btnRoute){btnRoute.style.background='#1D9E75';btnRoute.style.color='#fff';btnRoute.style.border='none';}
+    driverRow.style.display='';rangeRow.style.display='';
     rangeLabel.textContent='Autonomie estimée (km)';
+    modeInfo.style.display='none';
+  }else if(mode==='quai'){
+    if(btnQuai){btnQuai.style.background='#378ADD';btnQuai.style.color='#fff';btnQuai.style.border='none';}
+    driverRow.style.display='none';rangeRow.style.display='';
+    rangeLabel.textContent='Km batterie (optionnel)';
+    modeInfo.style.display='block';
+    modeInfo.style.background='#378ADD11';modeInfo.style.border='1px solid #378ADD33';modeInfo.style.color='#378ADD';
+    modeInfo.textContent='🅿 À quai : entre dans les statistiques. Le dernier chauffeur actif reste J-2.';
+  }else{
+    if(btnGarage){btnGarage.style.background='#E8A000';btnGarage.style.color='#111';btnGarage.style.border='none';}
+    driverRow.style.display='none';rangeRow.style.display='none';
+    modeInfo.style.display='block';
+    modeInfo.style.background='#E8A00011';modeInfo.style.border='1px solid #E8A00033';modeInfo.style.color='#E8A000';
+    modeInfo.textContent='🔧 Au garage : exclue de toutes les statistiques et calculs.';
   }
 }
 
@@ -1111,22 +1149,22 @@ function refreshVanStatus(){
   const date=document.getElementById('s-date').value;
   const bar=document.getElementById('van-status-bar');
   if(!date||!S.vans.length){bar.innerHTML='';return;}
-  bar.innerHTML=S.vans.map(v=>{
+  const allVans=S.vans.filter(v=>!v.inGarage);
+  bar.innerHTML=allVans.map(v=>{
     const e=S.entries.find(x=>x.vanId===v.id&&x.date===date);
     if(!e)return`<span class="van-pill">${v.name}</span>`;
-    if(e.parked)return`<span class="van-pill parked">🅿 ${v.name}</span>`;
+    if(e.mode==='garage')return`<span class="van-pill" style="border-color:#E8A00044;color:#E8A000">🔧 ${v.name}</span>`;
+    if(e.parked)return`<span class="van-pill parked">🅿 ${v.name}${e.range!=null?' '+e.range+'km':''}</span>`;
     return`<span class="van-pill done">✓ ${v.name} ${e.range}km</span>`;
   }).join('');
-  // J-2 info
   const vanId=document.getElementById('s-van').value;
   const vanSel=document.getElementById('s-van');
   const existingEntry=vanId?S.entries.find(x=>x.vanId===vanId&&x.date===date):null;
   vanSel.style.borderColor=existingEntry?'#1D9E75':'#2a2a2a';
-  // Show J-2 driver hint
   const j2info=document.getElementById('s-j2-info');
-  if(vanId&&date){
+  if(vanId&&date&&vanMode==='route'){
     const j2=driverJ2(vanId,date);
-    if(j2){j2info.style.display='block';j2info.textContent=`💡 Le chauffeur J-2 (${fmt(addDays(date,-2))}) était ${j2.fn} ${j2.ln} — son impact sera visible sur cette autonomie.`;}
+    if(j2){j2info.style.display='block';j2info.textContent=`💡 Responsable J-2: ${j2.fn} ${j2.ln} — son impact sera visible sur cette autonomie.`;}
     else{j2info.style.display='none';}
   }else{j2info.style.display='none';}
 }
@@ -1139,29 +1177,30 @@ function populateSaisieSelects(){
   vs.innerHTML='<option value="">— Camionnette —</option>'+activeVans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
   if(prevVan&&activeVans.find(v=>v.id===prevVan))vs.value=prevVan;
   ds.innerHTML='<option value="">— Chauffeur —</option>'+sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}">${c.fn} ${c.ln}</option>`).join('');
+  setVanMode('route');
 }
 
 function addEntry(){
   const date=document.getElementById('s-date').value;
   const vanId=document.getElementById('s-van').value;
-  const parked=document.getElementById('s-parked').checked;
-  const rangeRaw=document.getElementById('s-range').value;
+  const rangeRaw=document.getElementById('s-range')?.value;
   const range=rangeRaw?parseFloat(rangeRaw):null;
   if(!date||!vanId)return toast('Sélectionnez une date et une camionnette');
-  if(!parked){
+  if(vanMode==='route'){
     const driverId=document.getElementById('s-driver').value;
     if(!driverId)return toast('Sélectionnez un chauffeur');
     if(!range)return toast('Entrez l\'autonomie estimée');
-    S.entries.push({id:'e'+Date.now(),date,vanId,driverId,range,parked:false});
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId,range,parked:false,mode:'route'});
+  }else if(vanMode==='quai'){
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range,parked:true,mode:'quai'});
   }else{
-    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range,parked:true});
+    S.entries.push({id:'e'+Date.now(),date,vanId,driverId:null,range:null,parked:true,mode:'garage'});
   }
   S.entries.sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('s-range').value='';
   document.getElementById('s-van').value='';
   document.getElementById('s-driver').value='';
-  document.getElementById('s-parked').checked=false;
-  toggleParked(false);
+  setVanMode('route');
   saveState('Saisie enregistrée ✓');
   renderEntries();refreshVanStatus();
 }
@@ -1173,25 +1212,33 @@ function renderEntries(){
   empty.style.display='none';
   el.innerHTML=S.entries.slice(0,60).map(e=>{
     const v=S.vans.find(x=>x.id===e.vanId);
-    const isParked=e.parked;
-    const st=isParked?null:getStatus(e.range,v?.nominal);
-    const stCol=isParked?'#555':statusColor(st);
-    const j2=!isParked?driverJ2(e.vanId,e.date):null;
-    const del=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!==\'${e.id}\');saveState('Supprimé');renderEntries();refreshVanStatus()})" style="padding:4px 8px">✕</button>`;
+    const isGarage=e.mode==='garage';
+    const isQuai=e.parked&&e.mode!=='garage';
+    const isRoute=!e.parked;
+    const st=isRoute?getStatus(e.range,v?.nominal):null;
+    const stCol=isRoute?statusColor(st):'#888';
+    const j2=isRoute?driverJ2(e.vanId,e.date):null;
+    const del=`<button class="ia-btn del" onclick="openConfirm('Supprimer cette saisie ?',()=>{S.entries=S.entries.filter(x=>x.id!=='${e.id}');saveState('Supprimé');renderEntries();refreshVanStatus()})" style="padding:4px 8px">✕</button>`;
     const edit=`<button class="ia-btn" onclick="openEditEntry('${e.id}')" style="padding:4px 8px">✎</button>`;
-    return`<div class="entry-card" style="opacity:${isParked?.7:1}">
+    const borderCol=isGarage?'#E8A00044':isQuai?'#378ADD44':stCol+'44';
+    const modeTag=isGarage?'<span style="background:#E8A00022;color:#E8A000;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid #E8A00044">🔧 GARAGE</span>':
+      isQuai?'<span style="background:#378ADD22;color:#378ADD;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid #378ADD44">🅿 À QUAI</span>':'';
+    return`<div class="entry-card" style="opacity:${isGarage?.6:1};border-left:3px solid ${borderCol}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
             <span style="background:#F0C000;color:#111;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;padding:2px 8px;border-radius:5px">${v?.name||'?'}</span>
-            <span style="font-size:10px;color:#555">${fmt(e.date)}</span>
-            <span style="font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid ${isParked?'#333':''+stCol+'44'};color:${isParked?'#555':stCol};font-weight:700">${isParked?'Non utilisé':statusLabel(st)}</span>
+            <span style="font-size:10px;color:#bbb">${fmt(e.date)}</span>
+            ${modeTag}
+            ${isRoute?`<span style="font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid ${stCol}44;color:${stCol};font-weight:700">${statusLabel(st)}</span>`:''}
           </div>
-          ${!isParked?`<div style="font-size:12px;color:#888">👤 ${coursierName(e.driverId)}</div>`:'<div style="font-size:12px;color:#E8A000;font-style:italic">🅿 Garé / non utilisé</div>'}
-          ${j2?`<div style="font-size:10px;color:#555;margin-top:2px">Impact J-2: ${j2.fn} ${j2.ln}</div>`:''}
+          ${isRoute?`<div style="font-size:12px;color:#ddd;font-weight:500">👤 ${coursierName(e.driverId)}</div>`:''}
+          ${j2?`<div style="font-size:11px;color:#aaa;margin-top:2px">Resp. J-2: <span style="color:#F0C000;font-weight:600">${j2.fn} ${j2.ln}</span></div>`:''}
+          ${isQuai?'<div style="font-size:11px;color:#aaa;margin-top:2px">Inclus dans les statistiques</div>':''}
+          ${isGarage?'<div style="font-size:11px;color:#aaa;margin-top:2px">Exclu des statistiques</div>':''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          ${e.range!=null?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${isParked?'#888':stCol};line-height:1">${e.range}<span style="font-size:12px;font-weight:400;color:#555"> km</span></div>`:'<div style="font-size:12px;color:#444;margin-top:4px">— km</div>'}
+          ${e.range!=null?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${stCol};line-height:1">${e.range}<span style="font-size:12px;font-weight:400;color:#aaa"> km</span></div>`:'<div style="font-size:12px;color:#888;margin-top:4px">— km</div>'}
           <div style="display:flex;gap:4px">${edit}${del}</div>
         </div>
       </div>
@@ -1199,25 +1246,40 @@ function renderEntries(){
   }).join('');
 }
 
+
 function openEditEntry(id){
   editEntryId=id;
   const e=S.entries.find(x=>x.id===id);if(!e)return;
   document.getElementById('ee-range').value=e.range!=null?e.range:'';
   const drSel=document.getElementById('ee-driver');
   drSel.innerHTML=sortedCoursiers(S.coursiers).map(c=>`<option value="${c.id}" ${c.id===e.driverId?'selected':''}>${c.fn} ${c.ln}</option>`).join('');
-  document.getElementById('ee-driver-row').style.display=e.parked?'none':'';
-  // Update label for parked entries
-  const rangeLabel=document.querySelector('#modal-edit-entry label[for="ee-range"],#modal-edit-entry .fg label');
-  if(rangeLabel)rangeLabel.textContent=e.parked?'Km estimés (garée)':'Autonomie (km)';
+  const mode=e.mode||(e.parked?'quai':'route');
+  // Show/hide fields based on mode
+  document.getElementById('ee-driver-row').style.display=mode==='route'?'':'none';
+  document.getElementById('ee-range-row').style.display=mode==='garage'?'none':'';
+  // Update mode selector if present
+  const modeSel=document.getElementById('ee-mode');
+  if(modeSel)modeSel.value=mode;
   openModal('modal-edit-entry');
 }
 function saveEditEntry(){
   const e=S.entries.find(x=>x.id===editEntryId);if(!e)return;
-  const rawVal=document.getElementById('ee-range').value;
-  if(rawVal===''){e.range=null;}
-  else{const nr=parseFloat(rawVal);if(!isNaN(nr)&&nr>=0)e.range=nr;}
-  if(!e.parked){const nd=document.getElementById('ee-driver').value;if(nd)e.driverId=nd;}
+  const modeSel=document.getElementById('ee-mode');
+  const newMode=modeSel?modeSel.value:(e.mode||'route');
+  e.mode=newMode;
+  e.parked=newMode!=='route';
+  if(newMode==='garage'){e.range=null;e.driverId=null;}
+  else{
+    const rawVal=document.getElementById('ee-range').value;
+    if(rawVal===''){e.range=null;}else{const nr=parseFloat(rawVal);if(!isNaN(nr)&&nr>=0)e.range=nr;}
+    if(newMode==='route'){const nd=document.getElementById('ee-driver').value;if(nd)e.driverId=nd;}
+    else{e.driverId=null;}
+  }
   closeModal('modal-edit-entry');saveState('Saisie modifiée ✓');renderEntries();refreshVanStatus();
+}
+function onEditModeChange(mode){
+  document.getElementById('ee-driver-row').style.display=mode==='route'?'':'none';
+  document.getElementById('ee-range-row').style.display=mode==='garage'?'none':'';
 }
 
 // ══════════════════════════════════════════════
@@ -1245,7 +1307,7 @@ function renderVanList(){
       <div style="flex:1" onclick="openVanDetail('${v.id}')">
         <div style="display:flex;align-items:center;gap:7px">
           <span style="font-weight:700;font-size:14px;color:#f0f0f0">${v.name}</span>
-          ${inGarage?'<span style="background:#E8A00022;color:#E8A000;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid #E8A00044">🔧 GARAGE</span>':'<span style="font-size:10px;color:#555">→ détail</span>'}
+          ${inGarage?'<span style="background:#E8A00022;color:#E8A000;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid #E8A00044">🔧 GARAGE</span>':'<span style="font-size:10px;color:#aaa;font-weight:500">→ détail</span>'}
         </div>
         <div style="font-size:11px;color:#ccc;margin-top:2px">Nominal: ${v.nominal} km ${avg?`· Moy.: <span style="color:${statusColor(st)};font-weight:700">${avg} km</span>`:''}</div>
       </div>
@@ -1268,8 +1330,8 @@ function renderVanStats(){
   const activeVans=S.vans.filter(v=>!v.inGarage);
   if(!activeVans.length){el.innerHTML='';return;}
   el.innerHTML=activeVans.map(v=>{
-    const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isWeekend(e.date));
-    if(!entries.length)return`<div class="card-sm" style="opacity:.5"><div style="font-size:12px;color:#555">${v.name} — aucune donnée</div></div>`;
+    const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage');
+    if(!entries.length)return`<div class="card-sm" style="opacity:.5"><div style="font-size:12px;color:#aaa">${v.name} — aucune donnée</div></div>`;
     const avg=Math.round(entries.reduce((s,e)=>s+e.range,0)/entries.length);
     const min=Math.min(...entries.map(e=>e.range));
     const max=Math.max(...entries.map(e=>e.range));
@@ -1303,8 +1365,8 @@ function renderCoursiers(){
       <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0">
         <span class="num-badge">${String(i+1).padStart(2,'0')}</span>
         <div>
-          <div style="font-size:13px;color:#f0f0f0;font-weight:600">${c.fn} ${c.ln} <span style="font-size:10px;color:#555">→ impact</span></div>
-          <div style="font-size:10px;color:#555;margin-top:1px">${c.code}</div>
+          <div style="font-size:13px;color:#f0f0f0;font-weight:600">${c.fn} ${c.ln} <span style="font-size:10px;color:#aaa;font-weight:500">→ impact</span></div>
+          <div style="font-size:10px;color:#aaa;margin-top:1px">${c.code}</div>
         </div>
       </div>
       <div class="ia-wrap">
@@ -1315,7 +1377,7 @@ function renderCoursiers(){
 }
 function renderCoursiersRanking(){
   const impactMap={};
-  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)).forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage').forEach(e=>{
     const d2=addDays(e.date,2);
     const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
     if(!next)return;
@@ -1952,7 +2014,6 @@ function generateReport(){
       const bdC=data.map((d,i)=>ve[i].parked?'#E8A000':d===null?'transparent':getStatus(d,van.nominal)==='ok'?'#1D9E75':getStatus(d,van.nominal)==='warn'?'#E8A000':'#CC0000');
       rCharts[van.id]=new Chart(ctx.getContext('2d'),{
         type:'bar',data:{labels,datasets:[
-          {type:'line',label:`Nominal (${van.nominal}km)`,data:ve.map(()=>van.nominal),borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:0},
           {label:'Autonomie',data,backgroundColor:bgC,borderColor:bdC,borderWidth:1.5,order:1}
         ]},
         options:{responsive:true,maintainAspectRatio:false,
@@ -2040,7 +2101,6 @@ function openVanDetail(vanId){
     vdChart=new Chart(ctx,{
       type:'line',
       data:{labels,datasets:[
-        {label:`Nominal (${van.nominal} km)`,data:nominal,borderColor:'#CC0000',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false},
         {label:'Autonomie estimée',data:dataKm,borderColor:'#F0C000',backgroundColor:'#F0C00022',tension:0.3,pointRadius:5,pointHoverRadius:7,borderWidth:2.5,fill:true}
       ]},
       options:{
