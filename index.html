@@ -16,17 +16,34 @@
 <style>
 /* === RESET & BASE === */
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100svh;display:flex;align-items:flex-start;justify-content:center;padding:16px}
+body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100svh;display:flex;align-items:flex-start;justify-content:center;padding:0}
 
 /* === FRAME === */
-.phone{background:#161616;border-radius:26px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06)}
+.phone{background:#161616;width:100%;max-width:520px;min-height:100svh;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+
+/* Tablet / desktop: show as centered card */
+@media(min-width:600px){
+  body{padding:20px;align-items:flex-start}
+  .phone{border-radius:24px;min-height:auto;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06)}
+}
+@media(min-width:900px){
+  body{padding:30px}
+  .phone{max-width:600px}
+  .metric-grid{grid-template-columns:1fr 1fr 1fr 1fr}
+  .admins-grid{grid-template-columns:1fr 1fr 1fr 1fr}
+}
+@media(min-width:1200px){
+  body{padding:40px}
+  .phone{max-width:680px}
+}
 
 /* === SCREENS === */
-.screen{display:none;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1}
 .screen.active{display:flex}
 
 /* === LOGIN === */
-#screen-login{padding:30px 24px;align-items:center;justify-content:center;background:linear-gradient(180deg,#1e1e1e 0%,#161616 100%);min-height:100svh}
+#screen-login{padding:30px 24px;align-items:center;justify-content:center;background:linear-gradient(180deg,#1a1a1a 0%,#111 100%);min-height:100svh}
+@media(min-width:600px){#screen-login{min-height:auto;padding:50px 40px;border-radius:24px}}
 .app-title{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#F0C000;letter-spacing:1.5px;margin:14px 0 4px;text-align:center;text-transform:uppercase}
 .app-sub{font-size:12px;color:#666;margin-bottom:6px;text-align:center;letter-spacing:.5px}
 .app-date{font-size:11px;color:#444;margin-bottom:26px;text-align:center}
@@ -54,7 +71,8 @@ body{font-family:'Barlow',sans-serif;background:#F0C000;min-height:100svh;displa
 .tab-badge{position:absolute;top:4px;right:4px;background:#CC0000;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px}
 
 /* === CONTENT === */
-.tab-content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent}
+.tab-content{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent;min-height:400px}
+@media(min-width:600px){.tab-content{padding:18px 20px}}
 .tab-content::-webkit-scrollbar{width:3px}
 .tab-content::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
 
@@ -186,6 +204,46 @@ select.fi option{background:#1a1a1a}
 .vcb-label{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #2a2a2a;border-radius:7px;cursor:pointer;font-size:12px;color:#666;transition:all .15s}
 .vcb-label:has(input:checked){border-color:#F0C000;color:#F0C000;background:#F0C00011}
 .vcb-label input{width:auto;cursor:pointer}
+
+/* === RESPONSIVE TABS === */
+@media(min-width:600px){
+  .main-tab{font-size:12px;padding:10px 6px}
+  .tab-content{padding:18px 20px}
+  .metric-grid{gap:10px}
+  .form-row{gap:10px}
+}
+
+/* === STOCK RESPONSIVE === */
+.stock-grid{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:700px){.stock-grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.stock-grid{grid-template-columns:1fr 1fr 1fr}}
+
+/* === STOCK NEW STYLES === */
+.stock-item{background:#1a1a1a;border-radius:12px;border:1px solid #262626;overflow:hidden;transition:all .15s;cursor:default}
+.stock-item:hover{border-color:#333;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.stock-item.s-ok{border-top:3px solid #1D9E75}
+.stock-item.s-warn{border-top:3px solid #E8A000}
+.stock-item.s-empty{border-top:3px solid #CC0000}
+.stock-item-header{padding:12px 14px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.stock-item-name{font-size:14px;font-weight:700;color:#f0f0f0;line-height:1.3;flex:1}
+.stock-item-qty{text-align:right;flex-shrink:0}
+.stock-qty-big{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1}
+.stock-item-footer{padding:8px 14px 12px;display:flex;gap:6px}
+.stock-cat-pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:#F0C00015;color:#F0C000;border:1px solid #F0C00025}
+
+/* === SECTION DIVIDER === */
+.sec-divider{height:1px;background:linear-gradient(90deg,#F0C00033,transparent);margin:16px 0}
+
+/* === FLOATING ACTION BUTTON === */
+.fab{position:sticky;bottom:14px;right:0;display:flex;justify-content:flex-end;padding:0 4px;pointer-events:none;z-index:10}
+.fab button{pointer-events:all;box-shadow:0 6px 20px rgba(0,0,0,.5),0 2px 6px rgba(240,192,0,.3)}
+
+/* === HISTORY MODAL === */
+.hist-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #1e1e1e}
+.hist-item:last-child{border-bottom:none}
+.hist-badge{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;min-width:52px;text-align:center;padding:4px 8px;border-radius:8px;flex-shrink:0}
+.hist-badge.plus{background:#1D9E7520;color:#1D9E75;border:1px solid #1D9E7533}
+.hist-badge.minus{background:#CC000020;color:#ff6666;border:1px solid #CC000033}
 
 /* === PRINT === */
 @media print{
@@ -333,19 +391,25 @@ select.fi option{background:#1a1a1a}
   </div>
 
   <!-- ── STOCK ── -->
-  <div class="tab-content" id="tab-stock" style="display:none">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px" id="stock-metrics"></div>
-    <div style="display:flex;gap:7px;margin-bottom:10px">
-      <input class="search-bar" id="stock-search" placeholder="🔍 Rechercher..." oninput="renderStock()" style="margin-bottom:0;flex:1">
-      <select class="fi" id="stock-cat-filter" onchange="renderStock()" style="width:auto;min-width:90px;flex-shrink:0"></select>
+  <div class="tab-content" id="tab-stock" style="display:none;padding-bottom:80px">
+    <!-- Métriques -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px" id="stock-metrics"></div>
+
+    <!-- Barre de recherche + catégorie + boutons action -->
+    <div style="display:flex;gap:7px;margin-bottom:8px">
+      <input class="search-bar" id="stock-search" placeholder="🔍 Rechercher..." oninput="renderStock()" style="margin-bottom:0;flex:1;min-width:0">
+      <select class="fi" id="stock-cat-filter" onchange="renderStock()" style="width:auto;min-width:80px;flex-shrink:0;font-size:12px"></select>
     </div>
-    <div id="stock-list"></div>
-    <div style="display:flex;gap:7px;margin-top:6px;flex-wrap:wrap">
-      <button class="btn btn-y" onclick="openModal('modal-add-article')" style="flex:1">+ Article</button>
-      <button class="btn btn-g" onclick="printStock()" style="flex:1">🖨️ Récap PDF</button>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="btn btn-y" onclick="openModal('modal-add-article')" style="flex:1;padding:9px 8px;font-size:12px">＋ Ajouter article</button>
+      <button class="btn btn-g" onclick="printStock()" style="flex:1;padding:9px 8px;font-size:12px">🖨️ Récap PDF</button>
+      <button class="btn btn-g" onclick="openModal('modal-stock-history')" style="padding:9px 12px;font-size:12px;position:relative" id="btn-hist-all" title="Historique mouvements">
+        📋 <span id="hist-count-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#F0C000;color:#111;font-size:9px;font-weight:900;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px"></span>
+      </button>
     </div>
-    <div class="sec-title" style="margin-top:16px">Historique des mouvements</div>
-    <div id="stock-history"></div>
+
+    <!-- Liste articles -->
+    <div class="stock-grid" id="stock-list"></div>
   </div>
 
   <!-- ── ADMINS ── -->
@@ -545,6 +609,25 @@ select.fi option{background:#1a1a1a}
       <div style="font-size:11px;font-weight:800;color:#F0C000;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Détail par trajet</div>
       <div id="cd-table"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── STOCK HISTORY MODAL ── -->
+<div class="overlay" id="modal-stock-history">
+  <div class="modal" style="max-width:440px;padding:0;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid #252525;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#1a1a1a;z-index:2">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#F0C000;text-transform:uppercase;letter-spacing:.8px">Historique mouvements</div>
+        <div style="font-size:11px;color:#555;margin-top:1px" id="hist-modal-sub"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="filterHist('all')" id="hf-all" style="padding:5px 10px;border-radius:6px;border:1px solid #F0C000;background:#F0C00022;color:#F0C000;font-size:11px;font-weight:700;cursor:pointer">Tout</button>
+        <button onclick="filterHist('entree')" id="hf-in" style="padding:5px 10px;border-radius:6px;border:1px solid #333;background:none;color:#666;font-size:11px;font-weight:700;cursor:pointer">+ Entrées</button>
+        <button onclick="filterHist('sortie')" id="hf-out" style="padding:5px 10px;border-radius:6px;border:1px solid #333;background:none;color:#666;font-size:11px;font-weight:700;cursor:pointer">− Sorties</button>
+        <button onclick="closeModal('modal-stock-history')" style="background:none;border:1px solid #333;color:#666;width:28px;height:28px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <div id="hist-modal-list" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -1639,62 +1722,122 @@ function renderStock(){
   const alerts=S.stock.filter(a=>stockStatus(a)==='warn').length;
   const ruptures=S.stock.filter(a=>stockStatus(a)==='empty').length;
   document.getElementById('stock-metrics').innerHTML=`
-    <div class="metric-card"><div class="metric-val" style="font-size:22px">${total}</div><div class="metric-lbl">Articles</div></div>
-    <div class="metric-card" style="--accent:${alerts>0?'#E8A000':'#555'}"><div class="metric-val ${alerts>0?'warn':''}" style="font-size:22px">${alerts}</div><div class="metric-lbl">Stock bas</div></div>
-    <div class="metric-card" style="--accent:${ruptures>0?'#CC0000':'#555'}"><div class="metric-val ${ruptures>0?'bad':''}" style="font-size:22px">${ruptures}</div><div class="metric-lbl">Ruptures</div></div>`;
+    <div class="metric-card" style="--accent:#378ADD"><div class="metric-val" style="font-size:24px;color:#378ADD">${total}</div><div class="metric-lbl">Articles</div></div>
+    <div class="metric-card" style="--accent:${alerts>0?'#E8A000':'#333'}"><div class="metric-val ${alerts>0?'warn':''}" style="font-size:24px">${alerts}</div><div class="metric-lbl">Stock bas</div></div>
+    <div class="metric-card" style="--accent:${ruptures>0?'#CC0000':'#333'}"><div class="metric-val ${ruptures>0?'bad':''}" style="font-size:24px">${ruptures}</div><div class="metric-lbl">Ruptures</div></div>`;
+
+  // Update hist badge
+  const histBadge=document.getElementById('hist-count-badge');
+  if(histBadge){
+    histBadge.style.display=S.stockHistory.length?'flex':'none';
+    histBadge.textContent=S.stockHistory.length>99?'99+':S.stockHistory.length;
+  }
 
   const el=document.getElementById('stock-list');
   if(!list.length){
-    el.innerHTML=`<div style="text-align:center;padding:32px 0;color:#444;font-size:13px">${S.stock.length?'Aucun résultat pour cette recherche.':'Aucun article — ajoutez-en ci-dessous.'}</div>`;
-  }else{
-    const byCat={};
-    list.forEach(a=>{const c=a.cat||'Sans catégorie';if(!byCat[c])byCat[c]=[];byCat[c].push(a);});
-    el.innerHTML=Object.entries(byCat).sort(([a],[b])=>a.localeCompare(b)).map(([cat,arts])=>`
-      <div style="font-size:10px;font-weight:800;color:#555;text-transform:uppercase;letter-spacing:1px;margin:10px 0 5px;padding-left:2px">${cat}</div>
-      ${arts.map(a=>{
-        const st=stockStatus(a);
-        const col=stockStatusColor(st);
-        const convInfo=a.convFactor&&a.convUnit?`<div style="font-size:10px;color:#555;margin-top:2px">≈ ${fmtNum(a.qty*a.convFactor)} ${a.convUnit} total</div>`:'';
-        return`<div class="stock-card s-${st}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:14px;font-weight:600;color:#f0f0f0;margin-bottom:1px">${a.name}</div>
-              ${a.minQty>0?`<div style="font-size:10px;color:#555">Seuil: ${fmtNum(a.minQty)} ${a.unit}</div>`:''}
-              ${convInfo}
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div class="s-qty" style="color:${col}">${fmtNum(a.qty)}</div>
-              <div style="font-size:11px;color:#aaa">${a.unit}</div>
-              <div style="font-size:10px;color:${col};font-weight:700;margin-top:2px">${stockStatusLabel(st)}</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:5px">
-            <button onclick="openMouvement('${a.id}','sortie')" style="flex:1;background:#CC000018;color:#ff7777;border:1px solid #CC000033;border-radius:7px;padding:7px 0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px;transition:all .15s" onmouseover="this.style.background='#CC000033'" onmouseout="this.style.background='#CC000018'">− SORTIE</button>
-            <button onclick="openMouvement('${a.id}','entree')" style="flex:1;background:#1D9E7518;color:#1D9E75;border:1px solid #1D9E7533;border-radius:7px;padding:7px 0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px;transition:all .15s" onmouseover="this.style.background='#1D9E7530'" onmouseout="this.style.background='#1D9E7518'">+ ENTRÉE</button>
-            <button onclick="openEditArticle('${a.id}')" style="background:#1e1e1e;color:#777;border:1px solid #333;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer;transition:all .15s">✎</button>
-            <button onclick="openConfirm('Supprimer ${a.name} du stock ?',()=>{S.stock=S.stock.filter(x=>x.id!==\'${a.id}\');S.stockHistory=S.stockHistory.filter(h=>h.artId!==\'${a.id}\');saveState('Article supprimé');renderStock()})" style="background:none;color:#555;border:1px solid #333;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer;transition:all .15s">✕</button>
-          </div>
-        </div>`;
-      }).join('')}`).join('');
+    el.innerHTML=`<div style="text-align:center;padding:40px 0;color:#555;font-size:13px;grid-column:1/-1">${S.stock.length?'Aucun résultat.':'Aucun article — ajoutez-en ci-dessus.'}</div>`;
+    return;
   }
 
-  // History
-  const hist=document.getElementById('stock-history');
-  const hSlice=[...S.stockHistory].reverse().slice(0,30);
-  if(!hSlice.length){hist.innerHTML=`<div style="color:#444;font-size:12px;padding:6px 0">Aucun mouvement enregistré.</div>`;return;}
-  hist.innerHTML=hSlice.map(h=>{
+  // Group by category
+  const byCat={};
+  list.forEach(a=>{const c=a.cat||'Sans catégorie';if(!byCat[c])byCat[c]=[];byCat[c].push(a);});
+
+  el.innerHTML=Object.entries(byCat).sort(([a],[b])=>a.localeCompare(b)).map(([cat,arts])=>`
+    <div style="grid-column:1/-1;font-size:10px;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin:4px 0 2px;display:flex;align-items:center;gap:8px">
+      <span>${cat}</span><span style="flex:1;height:1px;background:#252525;display:block"></span>
+      <span style="color:#555;font-weight:600;font-size:10px">${arts.length} article${arts.length>1?'s':''}</span>
+    </div>
+    ${arts.map(a=>{
+      const st=stockStatus(a);
+      const col=stockStatusColor(st);
+      const convInfo=a.convFactor&&a.convUnit?`<div style="font-size:10px;color:#aaa;margin-top:1px">≡ ${fmtNum(a.qty*a.convFactor)} ${a.convUnit}</div>`:'';
+      const seuil=a.minQty>0?`<div style="font-size:10px;color:#888">Seuil: ${fmtNum(a.minQty)} ${a.unit}</div>`:'';
+      // Progress bar
+      const pct=a.minQty>0?Math.min(100,Math.round((a.qty/a.minQty)*100)):null;
+      const progressBar=pct!=null?`<div style="background:#252525;border-radius:99px;height:3px;margin:8px 14px;overflow:hidden">
+        <div style="background:${col};height:100%;width:${Math.min(pct,100)}%;border-radius:99px;transition:width .5s"></div>
+      </div>`:'<div style="height:8px"></div>';
+      return`<div class="stock-item s-${st}">
+        <div class="stock-item-header">
+          <div style="flex:1;min-width:0">
+            <div class="stock-item-name">${a.name}</div>
+            ${seuil}${convInfo}
+          </div>
+          <div class="stock-item-qty">
+            <div class="stock-qty-big" style="color:${col}">${fmtNum(a.qty)}</div>
+            <div style="font-size:11px;color:#aaa;text-align:right">${a.unit}</div>
+            <div style="font-size:10px;color:${col};font-weight:700;text-align:right;margin-top:1px">${stockStatusLabel(st)}</div>
+          </div>
+        </div>
+        ${progressBar}
+        <div class="stock-item-footer">
+          <button onclick="openMouvement('${a.id}','sortie')" style="flex:1;background:#CC000018;color:#ff7777;border:1px solid #CC000033;border-radius:8px;padding:8px 0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px">− SORTIE</button>
+          <button onclick="openMouvement('${a.id}','entree')" style="flex:1;background:#1D9E7518;color:#1D9E75;border:1px solid #1D9E7533;border-radius:8px;padding:8px 0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px">+ ENTRÉE</button>
+          <button onclick="openStockItemHistory('${a.id}')" style="background:#252525;color:#aaa;border:1px solid #333;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer" title="Historique">📋</button>
+          <button onclick="openEditArticle('${a.id}')" style="background:#252525;color:#aaa;border:1px solid #333;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">✎</button>
+          <button onclick="openConfirm('Supprimer ${a.name.replace(/'/g,"\\'")} ?',()=>{S.stock=S.stock.filter(x=>x.id!==\'${a.id}\');S.stockHistory=S.stockHistory.filter(h=>h.artId!==\'${a.id}\');saveState('Supprimé');renderStock()})" style="background:none;color:#555;border:1px solid #333;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">✕</button>
+        </div>
+      </div>`;
+    }).join('')}`).join('');
+}
+
+let histFilter='all';
+function filterHist(type){
+  histFilter=type;
+  ['all','entree','sortie'].forEach(t=>{
+    const btn=document.getElementById('hf-'+t.replace('entree','in').replace('sortie','out'));
+    if(btn){
+      const active=t===type;
+      btn.style.background=active?'#F0C00022':'none';
+      btn.style.borderColor=active?'#F0C000':'#333';
+      btn.style.color=active?'#F0C000':'#666';
+    }
+  });
+  renderHistModal(null);
+}
+
+function openStockItemHistory(artId){
+  const a=S.stock.find(x=>x.id===artId);
+  histFilter='all';
+  document.getElementById('hist-modal-sub').textContent=a?`Article: ${a.name}`:'';
+  renderHistModal(artId);
+  openModal('modal-stock-history');
+}
+
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id==='modal-stock-history'){
+    histFilter='all';
+    ['all','entree','sortie'].forEach(t=>{
+      const btn=document.getElementById('hf-'+t.replace('entree','in').replace('sortie','out'));
+      if(btn){btn.style.background=t==='all'?'#F0C00022':'none';btn.style.borderColor=t==='all'?'#F0C000':'#333';btn.style.color=t==='all'?'#F0C000':'#666';}
+    });
+    document.getElementById('hist-modal-sub').textContent='Tous les mouvements';
+    renderHistModal(null);
+  }
+}
+
+function renderHistModal(artIdFilter){
+  const list=document.getElementById('hist-modal-list');
+  if(!list)return;
+  let h=[...S.stockHistory].reverse();
+  if(artIdFilter)h=h.filter(x=>x.artId===artIdFilter);
+  if(histFilter!=='all')h=h.filter(x=>x.type===histFilter);
+  if(!h.length){list.innerHTML=`<div style="text-align:center;padding:32px;color:#555;font-size:13px">Aucun mouvement${histFilter!=='all'?' pour ce filtre':''}</div>`;return;}
+  list.innerHTML=h.slice(0,80).map(h=>{
     const a=S.stock.find(x=>x.id===h.artId);
     const isIn=h.type==='entree';
-    const convTxt=h.convDisplay?`<span style="color:#666"> · ${h.convDisplay}</span>`:'';
-    return`<div class="mouv-row">
-      <span class="mouv-sign ${isIn?'plus':'minus'}">${isIn?'+':'-'}${fmtNum(h.qty)}</span>
+    return`<div class="hist-item">
+      <div class="hist-badge ${isIn?'plus':'minus'}">${isIn?'+':'-'}${fmtNum(h.qty)}<div style="font-size:9px;font-weight:600;opacity:.8">${h.unit||''}</div></div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:#ccc;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a?.name||h.artName||'?'}</div>
-        <div style="font-size:10px;color:#444">${h.note?h.note+' — ':''}<span style="color:#555">${h.by||'?'} · ${fmt(h.date)}</span>${convTxt}</div>
+        <div style="font-size:13px;color:#f0f0f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a?.name||h.artName||'?'}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:1px">${h.note||'—'}</div>
+        <div style="font-size:10px;color:#666;margin-top:1px">${h.by||'?'} · ${fmt(h.date)}</div>
       </div>
-      <div style="text-align:right;flex-shrink:0;font-size:11px">
-        <div style="color:#555">Stock</div>
-        <div style="color:#aaa;font-weight:700">${fmtNum(h.after)} ${h.unit||''}</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:11px;color:#666">Stock après</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#aaa">${fmtNum(h.after)}</div>
       </div>
     </div>`;
   }).join('');
@@ -2289,7 +2432,6 @@ function printCoursierDetail(){
 // ══════════════════════════════════════════════
 // MODAL / UTILS
 // ══════════════════════════════════════════════
-function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 function openConfirm(msg,fn){deleteFn=fn;document.getElementById('confirm-msg').textContent=msg;openModal('modal-confirm');}
