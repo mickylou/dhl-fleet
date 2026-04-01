@@ -308,7 +308,7 @@ select.fi option{background:#1a1a1a}
   <!-- ── DASHBOARD ── -->
   <div class="tab-content" id="tab-dashboard">
     <div class="sec-title">Vue d'ensemble</div>
-    <div class="metric-grid" id="db-metrics"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:13px" id="db-metrics"></div>
     <!-- Stock alerts on dashboard -->
     <div id="db-stock-alert" style="display:none;margin-bottom:12px"></div>
     <div class="sec-title">Évolution autonomie — 7 jours</div>
@@ -1030,12 +1030,20 @@ function renderDashboard(){
     trend=(diff>=0?'▲ +':'▼ ')+diff+' km';
     trendClass=diff>=0?'ok':'bad';
   }
-  const saisiePct=S.vans.length?Math.round((saisieToday/S.vans.length)*100):0;
+  const activeVans=S.vans.filter(v=>!v.inGarage);
+  const todAllEntries=S.entries.filter(e=>e.date===tod);
+  const onRoute=activeVans.filter(v=>{const e=todAllEntries.find(x=>x.vanId===v.id);return e&&e.mode==='route';}).length;
+  const atQuai=activeVans.filter(v=>{const e=todAllEntries.find(x=>x.vanId===v.id);return e&&e.mode==='quai';}).length;
+  const nonSaisi=activeVans.filter(v=>!todAllEntries.find(x=>x.vanId===v.id)).length;
+  const garageCount=S.vans.filter(v=>v.inGarage).length;
+
   document.getElementById('db-metrics').innerHTML=`
-    <div class="metric-card"><div class="metric-val">${avgKm}</div><div class="metric-lbl">Autonomie moy. aujourd'hui</div></div>
-    <div class="metric-card"><div class="metric-val ${trendClass}">${trend}</div><div class="metric-lbl">Tendance (sem.)</div></div>
-    <div class="metric-card"><div class="metric-val ${alertCount>0?'bad':'ok'}">${alertCount}</div><div class="metric-lbl">Alertes autonomie</div></div>
-    <div class="metric-card"><div class="metric-val ${saisiePct<100&&S.vans.length?'warn':''}">${saisieToday}/${S.vans.length}</div><div class="metric-lbl">Saisies du jour</div></div>`;
+    <div class="metric-card"><div class="metric-val">${avgKm}</div><div class="metric-lbl">Autonomie moy.</div></div>
+    <div class="metric-card"><div class="metric-val ${trendClass}">${trend}</div><div class="metric-lbl">Tendance sem.</div></div>
+    <div class="metric-card" style="--accent:#1D9E75"><div class="metric-val ok" style="font-size:22px">${onRoute}</div><div class="metric-lbl">🚐 Sur route</div></div>
+    <div class="metric-card" style="--accent:#378ADD"><div class="metric-val" style="font-size:22px;color:#378ADD">${atQuai}</div><div class="metric-lbl">🅿 À quai</div></div>
+    <div class="metric-card" style="--accent:#555"><div class="metric-val" style="font-size:22px;color:#888">${nonSaisi}</div><div class="metric-lbl">⬜ Non saisi</div></div>
+    <div class="metric-card" style="--accent:#E8A000"><div class="metric-val warn" style="font-size:22px">${garageCount}</div><div class="metric-lbl">🔧 Garage</div></div>`;
 
   // Stock alert widget on dashboard
   const stockAlerts=S.stock.filter(a=>stockStatus(a)!=='ok');
@@ -2265,24 +2273,25 @@ function openVanDetail(vanId){
     });
   },50);
 
-  // Table
+  // Store print data globally
+  window._vdPrintData={vanTitle:van.name,vanSub:document.getElementById('vd-sub').textContent,entries,vanId};
+
+  // Table (dark for app display)
   const tableRows=entries.slice().reverse().map(e=>{
     const j2=driverJ2(vanId,e.date);
-    const st2=getStatus(e.range,van.nominal);
-    const stC=statusColor(st2);
-    const drv=!e.parked?coursierName(e.driverId):'🅿 Garé';
-    const diff=e.range-van.nominal;
+    const st2=!e.parked?getStatus(e.range,van.nominal):null;
+    const stC=e.parked?'#888':statusColor(st2);
+    const drv=!e.parked?coursierName(e.driverId):(e.mode==='garage'?'🔧 Garage':'🅿 À quai');
     return`<div style="background:#1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${stC}44;border-top:1px solid #252525;border-right:1px solid #252525;border-bottom:1px solid #252525">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <div style="font-size:12px;color:#aaa;margin-bottom:3px">${fmt(e.date)}${e.parked?' <span style="color:#888">🅿</span>':''}</div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:3px">${fmt(e.date)}${e.parked?` <span style="color:#888">${e.mode==='garage'?'🔧':'🅿'}</span>`:''}</div>
           <div style="font-size:13px;color:#f0f0f0;font-weight:600">👤 ${drv}</div>
           ${j2?`<div style="font-size:11px;color:#F0C000;margin-top:2px">Resp. J-2: ${j2.fn} ${j2.ln}</div>`:'<div style="font-size:11px;color:#444;margin-top:2px">J-2: pas de données</div>'}
         </div>
         <div style="text-align:right">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range!=null?e.range:'—'}</div>
           <div style="font-size:10px;color:#555">km</div>
-          <div style="font-size:11px;font-weight:700;color:${diff>=0?'#1D9E75':'#CC0000'}">${diff>=0?'+':''}${diff}</div>
         </div>
       </div>
     </div>`;
@@ -2293,32 +2302,46 @@ function openVanDetail(vanId){
 }
 
 function printVanDetail(){
-  const content=document.querySelector('#modal-van-detail > div');
+  const pd=window._vdPrintData||{};
+  const van=S.vans.find(v=>v.id===pd.vanId)||{name:'?'};
+  const entries=pd.entries||[];
+  const vanSub=document.getElementById('vd-sub')?.textContent||'';
+  const validE=entries.filter(e=>e.range!=null);
+  const avg=validE.length?Math.round(validE.reduce((s,e)=>s+e.range,0)/validE.length):0;
+  const maxKm=validE.length?Math.max(...validE.map(e=>e.range)):0;
+
+  const rows=entries.slice().reverse().map(e=>{
+    const j2=driverJ2(van.id,e.date);
+    const drv=!e.parked?coursierName(e.driverId):(e.mode==='garage'?'Garage':'A quai');
+    const c=e.parked?'#888':(e.range>=220?'green':e.range>=190?'orange':'red');
+    return '<tr style="background:'+(e.parked?'#f9f9f9':'white')+'">'
+      +'<td>'+fmt(e.date)+'</td>'
+      +'<td style="font-weight:700;color:'+c+'">'+(e.range!=null?e.range+' km':'--')+'</td>'
+      +'<td>'+drv+'</td>'
+      +'<td style="color:#CC0000">'+(j2?j2.fn+' '+j2.ln:'--')+'</td></tr>';
+  }).join('');
+
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Camionnette</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;padding:16px;color:#111}
-  .mc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
-  .ms{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}
-  .mv{font-size:24px;font-weight:800}.ml{font-size:10px;color:#888;text-transform:uppercase;margin-top:2px}
-  .row{border:1px solid #eee;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between}
-  canvas{max-height:200px}@media print{button{display:none}}</style></head><body>
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #CC0000">
-    <svg width="70" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
-    <text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
-    <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg>
-    <div><div style="font-size:18px;font-weight:800;color:#CC0000">${document.getElementById('vd-title').textContent}</div>
-    <div style="font-size:11px;color:#888">${document.getElementById('vd-sub').textContent}</div></div>
-  </div>
-  ${document.getElementById('vd-stats').outerHTML.replace(/class="metric-card"/g,'class="ms"').replace(/class="metric-val[^"]*"/g,'class="mv"').replace(/class="metric-lbl"/g,'class="ml"')}
-  <div id="vd-table-print"></div>
-  <scr'+'ipt>
-  // Recreate table for print
-  const el=document.getElementById('vd-table-print');
-  el.innerHTML='<h3 style="margin:12px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#CC0000">Détail journalier</h3>'+
-  ${JSON.stringify(document.getElementById('vd-table').innerHTML)};
-  setTimeout(()=>window.print(),400);
-  <\/script></body></html>`);
-  w.document.close();
+  w._cL=entries.map(e=>fmt(e.date));
+  w._cD=entries.map(e=>e.range!=null?e.range:null);
+  const d=w.document;d.open();
+  d.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+van.name+'</title>');
+  d.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;padding:20px;color:#111;font-size:12px}.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.sc{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.sv{font-size:26px;font-weight:800}.sl{font-size:10px;color:#888;text-transform:uppercase;margin-top:3px}.cw{height:230px;margin:12px 0;page-break-inside:avoid}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f5f5f5;padding:6px 8px;border:1px solid #ddd;font-size:10px;text-transform:uppercase;color:#555;text-align:left}td{padding:6px 8px;border:1px solid #eee}tr:nth-child(even)td{background:#fafafa}@media print{body{padding:10px}.cw{height:200px}}</style>');
+  d.write('</head><body>');
+  d.write('<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #CC0000"><svg width="80" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/><text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text><polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg><div><div style="font-size:20px;font-weight:800;color:#CC0000">'+van.name+'</div><div style="font-size:11px;color:#888;margin-top:3px">'+vanSub+'</div></div></div>');
+  d.write('<div class="stats"><div class="sc"><div class="sv">'+avg+'</div><div class="sl">Moy. km</div></div><div class="sc"><div class="sv">'+maxKm+'</div><div class="sl">Max km</div></div><div class="sc"><div class="sv">'+entries.length+'</div><div class="sl">Jours donnees</div></div></div>');
+  d.write('<div style="font-weight:700;color:#CC0000;text-transform:uppercase;font-size:12px;margin-bottom:6px">Evolution de l autonomie</div>');
+  d.write('<div class="cw"><canvas id="ch" style="width:100%;height:100%"></canvas></div>');
+  d.write('<div style="font-weight:700;color:#CC0000;text-transform:uppercase;font-size:12px;margin:14px 0 8px">Detail journalier</div>');
+  d.write('<table><thead><tr><th>Date</th><th>Autonomie</th><th>Chauffeur</th><th>Resp. J-2</th></tr></thead><tbody>'+rows+'</tbody></table>');
+  d.write('<div style="margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px">DHL · '+van.name+' · '+fmt(today())+'</div>');
+  d.write('</body></html>');d.close();
+  const s=d.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+  s.onload=function(){
+    try{new w.Chart(d.getElementById('ch'),{type:'line',data:{labels:w._cL,datasets:[{label:'Autonomie (km)',data:w._cD,borderColor:'#CC0000',backgroundColor:'rgba(204,0,0,0.1)',tension:0.3,pointRadius:4,borderWidth:2.5,fill:true,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},scales:{y:{ticks:{font:{size:10}}},x:{ticks:{font:{size:9},maxRotation:45}}}}});}catch(er){}
+    setTimeout(function(){w.print();},500);
+  };d.head.appendChild(s);
 }
 
 // ══════════════════════════════════════════════
@@ -2403,30 +2426,63 @@ function openCoursierDetail(coursierId){
   }).join('');
   document.getElementById('cd-table').innerHTML=tableRows||'<div style="color:#555;font-size:13px">Pas encore assez de données J+2.</div>';
 
+  // Store print data
+  window._cdPrintData={rows:impactRows.map(r=>({date:r.date,vanName:r.van?.name||'?',rangeJ0:r.rangeJ0,rangeJ2:r.rangeJ2,delta:r.delta}))};
   openModal('modal-coursier-detail');
 }
 
 function printCoursierDetail(){
+  const cTitle=document.getElementById('cd-title').textContent;
+  const cSub=document.getElementById('cd-sub').textContent;
+  const cd=window._cdPrintData||{};
+  const impactRows=cd.rows||[];
+
+  const avg=impactRows.length?Math.round(impactRows.reduce((s,r)=>s+r.delta,0)/impactRows.length):0;
+  const pos=impactRows.filter(r=>r.delta>=0).length;
+  const neg=impactRows.filter(r=>r.delta<0).length;
+  const ac=avg>=0?'green':'red';
+
+  const rows=impactRows.slice().reverse().map(r=>{
+    const dc=r.delta>=0?'green':'red';
+    return '<tr>'
+      +'<td>'+fmt(r.date)+'</td>'
+      +'<td style="color:#378ADD;font-weight:700">'+(r.vanName||'?')+'</td>'
+      +'<td>'+r.rangeJ0+' km</td>'
+      +'<td>'+r.rangeJ2+' km</td>'
+      +'<td style="font-weight:800;color:'+dc+'">'+(r.delta>=0?'+':'')+r.delta+' km</td></tr>';
+  }).join('');
+
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Coursier</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;padding:16px;color:#111}
-  .mc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
-  .ms{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}
-  .mv{font-size:24px;font-weight:800}.ml{font-size:10px;color:#888;text-transform:uppercase;margin-top:2px}
-  .row{border:1px solid #eee;border-radius:6px;padding:10px 12px;margin-bottom:6px}
-  @media print{button{display:none}}</style></head><body>
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #CC0000">
-    <svg width="70" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/>
-    <text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text>
-    <polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg>
-    <div><div style="font-size:18px;font-weight:800;color:#CC0000">${document.getElementById('cd-title').textContent}</div>
-    <div style="font-size:11px;color:#888">${document.getElementById('cd-sub').textContent}</div></div>
-  </div>
-  ${document.getElementById('cd-stats').outerHTML}
-  <h3 style="margin:12px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#CC0000">Détail des impacts J+2</h3>
-  ${document.getElementById('cd-table').innerHTML}
-  <scr'+'ipt>setTimeout(()=>window.print(),400);<\/scr'+'ipt></body></html>`);
-  w.document.close();
+  w._cL=impactRows.map(r=>fmt(r.date));
+  w._cD=impactRows.map(r=>r.delta);
+  w._cJ0=impactRows.map(r=>r.rangeJ0);
+  w._cJ2=impactRows.map(r=>r.rangeJ2);
+  const d=w.document;d.open();
+  d.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+cTitle+'</title>');
+  d.write('<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;padding:20px;color:#111;font-size:12px}.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.sc{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.sv{font-size:26px;font-weight:800}.sl{font-size:10px;color:#888;text-transform:uppercase;margin-top:3px}.cw{height:240px;margin:12px 0;page-break-inside:avoid}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f5f5f5;padding:6px 8px;border:1px solid #ddd;font-size:10px;text-transform:uppercase;color:#555;text-align:left}td{padding:6px 8px;border:1px solid #eee}tr:nth-child(even)td{background:#fafafa}@media print{body{padding:10px}.cw{height:210px}}</style>');
+  d.write('</head><body>');
+  d.write('<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #CC0000"><svg width="80" viewBox="0 0 245 80"><rect width="245" height="80" rx="6" fill="#CC0000"/><text x="122" y="56" font-family="Arial Black" font-size="50" font-weight="900" fill="#FFCC00" text-anchor="middle" letter-spacing="4">DHL</text><polygon points="0,62 28,62 16,80 0,80" fill="#FFCC00"/><polygon points="33,62 245,62 245,80 21,80" fill="#FFCC00"/></svg><div><div style="font-size:20px;font-weight:800;color:#CC0000">'+cTitle+'</div><div style="font-size:11px;color:#888;margin-top:3px">'+cSub+'</div></div></div>');
+  d.write('<div class="stats"><div class="sc"><div class="sv" style="color:'+ac+';">'+(avg>=0?'+':'')+avg+' km</div><div class="sl">Impact moyen</div></div><div class="sc"><div class="sv" style="color:green">'+pos+'</div><div class="sl">Positifs</div></div><div class="sc"><div class="sv" style="color:red">'+neg+'</div><div class="sl">Negatifs</div></div></div>');
+  d.write('<div style="font-weight:700;color:#CC0000;text-transform:uppercase;font-size:12px;margin-bottom:6px">Impact sur l autonomie J+2</div>');
+  d.write('<div class="cw"><canvas id="ch" style="width:100%;height:100%"></canvas></div>');
+  d.write('<div style="font-weight:700;color:#CC0000;text-transform:uppercase;font-size:12px;margin:14px 0 8px">Detail par trajet</div>');
+  d.write('<table><thead><tr><th>Date</th><th>Camionnette</th><th>Autonomie J</th><th>Autonomie J+2</th><th>Impact</th></tr></thead><tbody>'+rows+'</tbody></table>');
+  d.write('<div style="margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px">DHL · '+cTitle+' · '+fmt(today())+'</div>');
+  d.write('</body></html>');d.close();
+  const s=d.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+  s.onload=function(){
+    try{new w.Chart(d.getElementById('ch'),{
+      type:'bar',
+      data:{labels:w._cL,datasets:[
+        {type:'line',label:'Autonomie J',data:w._cJ0,borderColor:'#888',borderDash:[4,3],borderWidth:1.5,pointRadius:3,fill:false,yAxisID:'y'},
+        {type:'line',label:'Autonomie J+2',data:w._cJ2,borderColor:'#CC0000',borderWidth:2.5,pointRadius:4,fill:false,yAxisID:'y'},
+        {label:'Impact (delta km)',data:w._cD,backgroundColor:w._cD.map(function(v){return v>=0?'rgba(29,158,117,0.5)':'rgba(204,0,0,0.5)';}),borderColor:w._cD.map(function(v){return v>=0?'#1D9E75':'#CC0000';}),borderWidth:1.5,yAxisID:'y2'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y2:{position:'right',ticks:{font:{size:10}},grid:{drawOnChartArea:false}},x:{ticks:{font:{size:9},maxRotation:45}}}}
+    });}catch(er){}
+    setTimeout(function(){w.print();},500);
+  };d.head.appendChild(s);
 }
 
 // ══════════════════════════════════════════════
