@@ -309,13 +309,35 @@ select.fi option{background:#1a1a1a}
   <div class="tab-content" id="tab-dashboard">
     <div class="sec-title">Vue d'ensemble</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:13px" id="db-metrics"></div>
-    <!-- Stock alerts on dashboard -->
     <div id="db-stock-alert" style="display:none;margin-bottom:12px"></div>
-    <div class="sec-title">Évolution autonomie — 7 jours</div>
-    <div class="card" style="padding:10px 12px">
-      <div class="chart-wrap"><canvas id="chart-overview"></canvas></div>
+
+    <!-- Chart header with period + van selector -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div class="sec-title" style="margin-bottom:0;flex:1">Évolution autonomie</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <select class="fi" id="db-period" onchange="renderDashboardChart()" style="font-size:11px;padding:5px 8px;width:auto">
+          <option value="10">10 jours</option>
+          <option value="14" selected>2 semaines</option>
+          <option value="20">4 semaines</option>
+          <option value="custom">Personnalisé</option>
+        </select>
+        <select class="fi" id="db-van-filter" onchange="renderDashboardChart()" style="font-size:11px;padding:5px 8px;width:auto">
+          <option value="all">Toutes les vans</option>
+        </select>
+      </div>
     </div>
-    <div class="sec-title">Impact conducteurs sur l'autonomie — 7 jours</div>
+    <!-- Custom date range (hidden by default) -->
+    <div id="db-custom-dates" style="display:none;display:flex;gap:6px;margin-bottom:8px">
+      <input type="date" class="fi" id="db-from" onchange="renderDashboardChart()" style="flex:1;font-size:12px;padding:6px 8px">
+      <input type="date" class="fi" id="db-to" onchange="renderDashboardChart()" style="flex:1;font-size:12px;padding:6px 8px">
+    </div>
+    <div class="card" style="padding:10px 12px">
+      <div class="chart-wrap" style="height:220px"><canvas id="chart-overview"></canvas></div>
+    </div>
+    <!-- Van detail on click -->
+    <div id="db-van-detail" style="display:none;margin-top:4px"></div>
+
+    <div class="sec-title" style="margin-top:12px">Impact conducteurs sur l'autonomie</div>
     <div id="db-ranking" style="margin-bottom:12px"></div>
     <div class="sec-title">Dernières saisies</div>
     <div id="db-recent"></div>
@@ -1034,8 +1056,10 @@ function renderDashboard(){
   const todAllEntries=S.entries.filter(e=>e.date===tod);
   const onRoute=activeVans.filter(v=>{const e=todAllEntries.find(x=>x.vanId===v.id);return e&&e.mode==='route';}).length;
   const atQuai=activeVans.filter(v=>{const e=todAllEntries.find(x=>x.vanId===v.id);return e&&e.mode==='quai';}).length;
+  // Garage = vans permanently in garage OR today's entry is mode=garage
+  const garageFromEntry=activeVans.filter(v=>{const e=todAllEntries.find(x=>x.vanId===v.id);return e&&e.mode==='garage';}).length;
+  const garageCount=S.vans.filter(v=>v.inGarage).length+garageFromEntry;
   const nonSaisi=activeVans.filter(v=>!todAllEntries.find(x=>x.vanId===v.id)).length;
-  const garageCount=S.vans.filter(v=>v.inGarage).length;
 
   document.getElementById('db-metrics').innerHTML=`
     <div class="metric-card"><div class="metric-val">${avgKm}</div><div class="metric-lbl">Autonomie moy.</div></div>
@@ -1061,21 +1085,109 @@ function renderDashboard(){
     </div>`;
   }else{dbSA.style.display='none';}
 
-  // Chart — weekdays only, include parked with km
-  const labels=[],datasets=[];
-  const chartDays=[];
-  for(let i=13;i>=0;i--){
-    const d=addDays(tod,-i);
-    if(!isWeekend(d)){chartDays.push(d);labels.push(fmt(d));}
+  // Populate van filter
+  const vf=document.getElementById('db-van-filter');
+  if(vf){
+    const prev=vf.value;
+    vf.innerHTML='<option value="all">Toutes les vans</option>'+S.vans.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+    if(prev&&prev!=='all')vf.value=prev;
   }
+
+
+  // Recent entries with J+2 impact (include parked with km)
+  const recent=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  const rcEl=document.getElementById('db-recent');
+  if(!recent.length){rcEl.innerHTML=`<div style="color:#666;font-size:13px;padding:8px 0">Aucune saisie.</div>`;return;}
+  rcEl.innerHTML=recent.map(e=>{
+    const v=S.vans.find(x=>x.id===e.vanId);
+    if(e.parked&&e.range==null)return`<div class="card-sm" style="opacity:.55;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:13px;font-weight:700;color:#666">${v?.name||'?'}</div><div style="font-size:11px;color:#aaa">${fmt(e.date)} · 🅿 Non utilisé</div></div>
+      <span style="font-size:12px;color:#555">— km</span></div>`;
+    const st=e.parked?'warn':getStatus(e.range,v?.nominal);
+    const stC=e.parked?'#888':statusColor(st);
+    const j2=driverJ2(e.vanId,e.date);
+    const j0=S.entries.find(x=>x.vanId===e.vanId&&x.date===addDays(e.date,-2)&&x.range!=null);
+    const delta=j0&&e.range!=null?e.range-j0.range:null;
+    const deltaStr=delta!=null?`<span style="font-size:11px;font-weight:800;color:${delta>=0?'#1D9E75':'#CC0000'};margin-left:6px">${delta>=0?'▲+':'▼'}${delta} km</span>`:'';
+    return`<div class="card-sm" style="border-left:3px solid ${stC}33">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:#f0f0f0">${v?.name||'?'}</span>
+            <span style="font-size:10px;color:#777">${fmt(e.date)}</span>
+            ${e.parked?'<span style="font-size:10px;color:#888">🅿 Garé</span>':''}
+            ${deltaStr}
+          </div>
+          ${!e.parked?`<div style="font-size:12px;color:#aaa;margin-top:2px">👤 ${coursierName(e.driverId)}</div>`:''}
+          ${j2&&!e.parked?`<div style="font-size:10px;color:#777;margin-top:1px">Impact J-2: <span style="color:#F0C000;font-weight:600">${j2.fn} ${j2.ln}</span></div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;padding-left:8px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range!=null?e.range:'—'}</div>
+          <div style="font-size:10px;color:#666">km</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderDashboardChart();
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD CHART (séparé pour être appelé au changement de période/van)
+// ══════════════════════════════════════════════
+let overviewVanChart=null; // secondary chart for single van
+
+function renderDashboardChart(){
+  const tod=today();
+  const periodSel=document.getElementById('db-period')?.value||'14';
+  const vanFilter=document.getElementById('db-van-filter')?.value||'all';
+  const customDates=document.getElementById('db-custom-dates');
+  const fromInput=document.getElementById('db-from');
+  const toInput=document.getElementById('db-to');
+
+  // Show/hide custom date picker
+  if(customDates)customDates.style.display=periodSel==='custom'?'flex':'none';
+
+  // Build chartDays
+  const chartDays=[],labels=[];
+  if(periodSel==='custom'){
+    const from=fromInput?.value||addDays(tod,-14);
+    const to=toInput?.value||tod;
+    let cur=from;
+    while(cur<=to){
+      if(!isWeekend(cur)){chartDays.push(cur);labels.push(fmt(cur));}
+      cur=addDays(cur,1);
+    }
+  }else{
+    const days=parseInt(periodSel)||14;
+    // Count back enough calendar days to get `days` workdays
+    let found=0,i=0;
+    while(found<days){
+      const d=addDays(tod,-i);
+      if(!isWeekend(d)){chartDays.unshift(d);labels.unshift(fmt(d));found++;}
+      i++;
+    }
+  }
+
   const cols=['#F0C000','#1D9E75','#378ADD','#E8A000','#D85A30','#8B5CF6','#EC4899'];
-  S.vans.slice(0,7).forEach((van,idx)=>{
+  const datasets=[];
+  const vansToShow=vanFilter==='all'?S.vans:S.vans.filter(v=>v.id===vanFilter);
+
+  vansToShow.forEach((van,idx)=>{
     const data=chartDays.map(d=>{
       const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&x.range!=null&&x.mode!=='garage');
       return e?e.range:null;
     });
-    datasets.push({label:van.name,data,borderColor:cols[idx%7],backgroundColor:cols[idx%7]+'18',tension:0.35,spanGaps:false,pointRadius:4,pointHoverRadius:6,borderWidth:2});
+    datasets.push({
+      label:van.name,data,
+      borderColor:cols[idx%7],backgroundColor:cols[idx%7]+'18',
+      tension:0.35,spanGaps:false,pointRadius:vanFilter==='all'?4:5,
+      pointHoverRadius:vanFilter==='all'?6:8,borderWidth:vanFilter==='all'?2:2.5,
+      // Make clickable
+      vanId:van.id
+    });
   });
+
   if(overviewChart)overviewChart.destroy();
   const ctx=document.getElementById('chart-overview').getContext('2d');
   overviewChart=new Chart(ctx,{
@@ -1083,13 +1195,48 @@ function renderDashboard(){
     data:{labels,datasets},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#ccc',font:{size:11},boxWidth:12,padding:10}}},
+      onClick:(evt,elements)=>{
+        if(elements.length&&vanFilter==='all'){
+          const dsIdx=elements[0].datasetIndex;
+          const van=vansToShow[dsIdx];
+          if(van){
+            const vf=document.getElementById('db-van-filter');
+            if(vf)vf.value=van.id;
+            renderDashboardChart();
+            showVanDetailDashboard(van.id,chartDays);
+          }
+        }
+      },
+      plugins:{
+        legend:{
+          labels:{color:'#ccc',font:{size:11},boxWidth:12,padding:10},
+          onClick:(e,item,legend)=>{
+            const van=vansToShow[item.datasetIndex];
+            if(van&&vanFilter==='all'){
+              const vf=document.getElementById('db-van-filter');
+              if(vf)vf.value=van.id;
+              renderDashboardChart();
+              showVanDetailDashboard(van.id,chartDays);
+            }
+          }
+        }
+      },
       scales:{
         y:{ticks:{color:'#bbb',font:{size:11}},grid:{color:'#2a2a2a'},title:{display:true,text:'km',color:'#aaa',font:{size:11}}},
         x:{ticks:{color:'#bbb',font:{size:11}},grid:{color:'#222'}}
       }
     }
   });
+
+  // Show/hide van detail panel
+  const detailEl=document.getElementById('db-van-detail');
+  if(vanFilter!=='all'){
+    const van=S.vans.find(v=>v.id===vanFilter);
+    if(van)showVanDetailDashboard(van.id,chartDays);
+  }else{
+    if(detailEl)detailEl.style.display='none';
+  }
+}
 
   // ── IMPACT RANKING ── (all entries with km, excluding weekends)
   const impactMap={};
@@ -1161,40 +1308,63 @@ function renderDashboard(){
     rkEl.innerHTML=html;
   }
 
-  // Recent entries with J+2 impact (include parked with km)
-  const recent=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
-  const rcEl=document.getElementById('db-recent');
-  if(!recent.length){rcEl.innerHTML=`<div style="color:#666;font-size:13px;padding:8px 0">Aucune saisie.</div>`;return;}
-  rcEl.innerHTML=recent.map(e=>{
-    const v=S.vans.find(x=>x.id===e.vanId);
-    if(e.parked&&e.range==null)return`<div class="card-sm" style="opacity:.55;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:13px;font-weight:700;color:#666">${v?.name||'?'}</div><div style="font-size:11px;color:#aaa">${fmt(e.date)} · 🅿 Non utilisé</div></div>
-      <span style="font-size:12px;color:#555">— km</span></div>`;
-    const st=e.parked?'warn':getStatus(e.range,v?.nominal);
-    const stC=e.parked?'#888':statusColor(st);
-    const j2=driverJ2(e.vanId,e.date);
-    const j0=S.entries.find(x=>x.vanId===e.vanId&&x.date===addDays(e.date,-2)&&x.range!=null);
-    const delta=j0&&e.range!=null?e.range-j0.range:null;
-    const deltaStr=delta!=null?`<span style="font-size:11px;font-weight:800;color:${delta>=0?'#1D9E75':'#CC0000'};margin-left:6px">${delta>=0?'▲+':'▼'}${delta} km</span>`:'';
-    return`<div class="card-sm" style="border-left:3px solid ${stC}33">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:#f0f0f0">${v?.name||'?'}</span>
-            <span style="font-size:10px;color:#777">${fmt(e.date)}</span>
-            ${e.parked?'<span style="font-size:10px;color:#888">🅿 Garé</span>':''}
-            ${deltaStr}
-          </div>
-          ${!e.parked?`<div style="font-size:12px;color:#aaa;margin-top:2px">👤 ${coursierName(e.driverId)}</div>`:''}
-          ${j2&&!e.parked?`<div style="font-size:10px;color:#777;margin-top:1px">Impact J-2: <span style="color:#F0C000;font-weight:600">${j2.fn} ${j2.ln}</span></div>`:''}
-        </div>
-        <div style="text-align:right;flex-shrink:0;padding-left:8px">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:${stC};line-height:1">${e.range!=null?e.range:'—'}</div>
-          <div style="font-size:10px;color:#666">km</div>
-        </div>
+// ══════════════════════════════════════════════
+// DASHBOARD — VAN DETAIL PANEL (inline dans le tableau)
+// ══════════════════════════════════════════════
+let dbVanChart=null;
+function showVanDetailDashboard(vanId, chartDays){
+  const van=S.vans.find(v=>v.id===vanId);
+  const detailEl=document.getElementById('db-van-detail');
+  if(!van||!detailEl)return;
+
+  const entries=chartDays.map(d=>{
+    return S.entries.find(x=>x.vanId===vanId&&x.date===d&&x.range!=null&&x.mode!=='garage')||null;
+  });
+  const validEntries=entries.filter(Boolean);
+  if(!validEntries.length){
+    detailEl.style.display='none';
+    return;
+  }
+
+  const avg=Math.round(validEntries.reduce((s,e)=>s+e.range,0)/validEntries.length);
+  const max=Math.max(...validEntries.map(e=>e.range));
+
+  // Build impact rows per day
+  const rows=chartDays.map((d,i)=>{
+    const e=entries[i];
+    if(!e)return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #222;opacity:.4">
+      <span style="color:#555;font-size:12px">${fmt(d)}</span><span style="color:#444">—</span></div>`;
+    const j2=driverJ2(vanId,d);
+    const prev=i>0?entries.slice(0,i).filter(Boolean).slice(-1)[0]:null;
+    const delta=prev?e.range-prev.range:null;
+    const dc=delta!=null?(delta>=0?'#1D9E75':'#CC0000'):'#555';
+    const drv=!e.parked?coursierName(e.driverId):'🅿';
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e1e1e">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:#bbb">${fmt(d)}</div>
+        <div style="font-size:12px;color:#f0f0f0;font-weight:600">👤 ${drv}</div>
+        ${j2?`<div style="font-size:10px;color:#F0C000">J-2: ${j2.fn} ${j2.ln}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:${dc};line-height:1">${e.range}</div>
+        ${delta!=null?`<div style="font-size:10px;font-weight:700;color:${dc}">${delta>=0?'+':''}${delta}</div>`:''}
       </div>
     </div>`;
   }).join('');
+
+  detailEl.style.display='block';
+  detailEl.innerHTML=`
+    <div style="background:#1a1a1a;border-radius:10px;border:1px solid #2a2a2a;overflow:hidden;margin-top:4px">
+      <div style="background:#111;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #F0C000">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#F0C000">${van.name}</div>
+          <div style="font-size:10px;color:#666">Moy: ${avg} km · Max: ${max} km · ${validEntries.length} jours</div>
+        </div>
+        <button onclick="document.getElementById('db-van-filter').value='all';renderDashboardChart()" 
+          style="background:none;border:1px solid #333;color:#888;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">✕ Toutes</button>
+      </div>
+      <div style="padding:10px 14px;max-height:300px;overflow-y:auto">${rows}</div>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════
