@@ -456,6 +456,17 @@ select.fi option{background:#1a1a1a}
       <div style="font-size:10px;color:#666;margin-top:8px;line-height:1.5">Export = fichier JSON · Importez ce fichier sur votre autre appareil</div>
     </div>
 
+    <div class="sec-title" style="margin-top:10px">📅 Jours fériés</div>
+    <div class="card">
+      <div style="font-size:12px;color:#aaa;margin-bottom:10px;line-height:1.6">Ces jours sont exclus des statistiques et graphiques, comme les week-ends.</div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="fg"><label>Date du jour férié</label><input type="date" class="fi" id="holiday-date"></div>
+        <div class="fg"><label>Libellé</label><input type="text" class="fi" id="holiday-label" placeholder="ex: Pâques, 1er mai..."></div>
+      </div>
+      <button class="btn btn-y btn-full" onclick="addHoliday()">+ Ajouter jour férié</button>
+      <div id="holidays-list" style="margin-top:10px"></div>
+    </div>
+
     <div class="sec-title" style="margin-top:10px">Informations application</div>
     <div class="card" style="background:#111;border-color:#222">
       <div style="font-size:12px;color:#bbb;line-height:1.9">
@@ -844,7 +855,7 @@ const INIT_VANS=[
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-let S={coursiers:[],admins:[],vans:[],entries:[],stock:[],stockHistory:[],currentAdmin:null,lastMod:'—'};
+let S={coursiers:[],admins:[],vans:[],entries:[],stock:[],stockHistory:[],holidays:[],currentAdmin:null,lastMod:'—'};
 let editEntryId=null,deleteFn=null,editCoursierId=null,photoAdminId=null;
 let editArticleId=null,mouvArticleId=null,mouvType='sortie';
 let overviewChart=null;
@@ -863,6 +874,7 @@ function loadState(){
       S.entries=d.entries||[];
       S.stock=d.stock||[];
       S.stockHistory=d.stockHistory||[];
+      S.holidays=d.holidays||[];
       S.lastMod=d.lastMod||'—';
     }else{
       S.coursiers=clone(INIT_COURSIERS);
@@ -907,7 +919,7 @@ function driverJ2(vanId,date){
   // Skip "garage" days — van was out of service
   for(let i=1;i<=7;i++){
     const d=addDays(date,-i);
-    if(isWeekend(d))continue;
+    if(isExcluded(d))continue;
     const e=S.entries.find(x=>x.vanId===vanId&&x.date===d);
     if(!e)continue; // no entry = not recorded
     if(e.mode==='garage')continue; // at garage, skip
@@ -1024,13 +1036,19 @@ function switchTab(tab){
 // ══════════════════════════════════════════════
 function isWeekend(dateStr){
   const d=new Date(dateStr);
-  return d.getDay()===0||d.getDay()===6; // 0=Sun, 6=Sat
+  return d.getDay()===0||d.getDay()===6;
+}
+function isExcluded(dateStr){
+  // Exclude weekends AND public holidays
+  if(isWeekend(dateStr))return true;
+  if(!S.holidays||!S.holidays.length)return false;
+  return S.holidays.some(h=>(typeof h==='string'?h:h.date)===dateStr);
 }
 
 function renderDashboard(){
   const tod=today();
   // Include parked entries that have km (range!=null), exclude weekends
-  const todE=S.entries.filter(e=>e.date===tod&&e.range!=null&&!isWeekend(tod)&&e.mode!=='garage');
+  const todE=S.entries.filter(e=>e.date===tod&&e.range!=null&&!isExcluded(tod)&&e.mode!=='garage');
   let avgKm='—',alertCount=0,saisieToday=0;
   if(todE.length){
     const avg=todE.reduce((s,e)=>s+e.range,0)/todE.length;
@@ -1042,7 +1060,7 @@ function renderDashboard(){
   const last7=[];
   for(let i=6;i>=0;i--){
     const d=addDays(tod,-i);
-    if(isWeekend(d))continue;
+    if(isExcluded(d))continue;
     const de=S.entries.filter(e=>e.date===d&&e.range!=null&&e.mode!=='garage');
     if(de.length)last7.push(de.reduce((s,e)=>s+e.range,0)/de.length);
   }
@@ -1155,7 +1173,7 @@ function renderDashboardChart(){
     const to=toInput?.value||tod;
     let cur=from;
     while(cur<=to){
-      if(!isWeekend(cur)){chartDays.push(cur);labels.push(fmt(cur));}
+      if(!isExcluded(cur)){chartDays.push(cur);labels.push(fmt(cur));}
       cur=addDays(cur,1);
     }
   }else{
@@ -1164,7 +1182,7 @@ function renderDashboardChart(){
     let found=0,i=0;
     while(found<days){
       const d=addDays(tod,-i);
-      if(!isWeekend(d)){chartDays.unshift(d);labels.unshift(fmt(d));found++;}
+      if(!isExcluded(d)){chartDays.unshift(d);labels.unshift(fmt(d));found++;}
       i++;
     }
   }
@@ -1240,9 +1258,9 @@ function renderDashboardChart(){
 
   // ── IMPACT RANKING ── (all entries with km, excluding weekends)
   const impactMap={};
-  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage').forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isExcluded(e.date)&&e.mode!=='garage').forEach(e=>{
     const d2=addDays(e.date,2);
-    const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    const nextEntry=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isExcluded(d2));
     if(!nextEntry)return;
     const delta=nextEntry.range-e.range;
     if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
@@ -1411,7 +1429,9 @@ function refreshVanStatus(){
   const bar=document.getElementById('van-status-bar');
   if(!date||!S.vans.length){bar.innerHTML='';return;}
   const allVans=S.vans.filter(v=>!v.inGarage);
-  bar.innerHTML=allVans.map(v=>{
+  const holidayToday=S.holidays&&S.holidays.find(h=>h.date===date);
+  bar.innerHTML=(holidayToday?`<div style="width:100%;padding:6px 10px;background:#E8A00015;border:1px solid #E8A00033;border-radius:7px;font-size:12px;color:#E8A000;font-weight:600">📅 Jour férié : ${holidayToday.label||fmt(date)} — exclu des statistiques</div>`:'')
+    +allVans.map(v=>{
     const e=S.entries.find(x=>x.vanId===v.id&&x.date===date);
     if(!e)return`<span class="van-pill">${v.name}</span>`;
     if(e.mode==='garage')return`<span class="van-pill" style="border-color:#E8A00044;color:#E8A000">🔧 ${v.name}</span>`;
@@ -1424,9 +1444,18 @@ function refreshVanStatus(){
   vanSel.style.borderColor=existingEntry?'#1D9E75':'#2a2a2a';
   const j2info=document.getElementById('s-j2-info');
   if(vanId&&date&&vanMode==='route'){
-    const j2=driverJ2(vanId,date);
-    if(j2){j2info.style.display='block';j2info.textContent=`💡 Responsable J-2: ${j2.fn} ${j2.ln} — son impact sera visible sur cette autonomie.`;}
-    else{j2info.style.display='none';}
+    // Check if selected date is a holiday
+    const isHoliday=S.holidays&&S.holidays.find(h=>h.date===date);
+    if(isHoliday){
+      j2info.style.display='block';
+      j2info.style.background='#E8A00011';j2info.style.borderColor='#E8A00033';j2info.style.color='#E8A000';
+      j2info.textContent=`⚠️ ${fmt(date)} est un jour férié (${isHoliday.label||'férié'}) — ce jour sera exclu des statistiques.`;
+    }else{
+      j2info.style.background='#1D9E7511';j2info.style.borderColor='#1D9E7530';j2info.style.color='#1D9E75';
+      const j2=driverJ2(vanId,date);
+      if(j2){j2info.style.display='block';j2info.textContent=`💡 Responsable J-2: ${j2.fn} ${j2.ln} — son impact sera visible sur cette autonomie.`;}
+      else{j2info.style.display='none';}
+    }
   }else{j2info.style.display='none';}
 }
 
@@ -1560,7 +1589,7 @@ function renderVanList(){
   el.innerHTML=S.vans.map(v=>{
     const tod=today();
     const recent=[];
-    for(let i=0;i<10;i++){const d=addDays(tod,-i);if(isWeekend(d))continue;const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&x.range!=null);if(e)recent.push(e.range);}
+    for(let i=0;i<10;i++){const d=addDays(tod,-i);if(isExcluded(d))continue;const e=S.entries.find(x=>x.vanId===v.id&&x.date===d&&x.range!=null);if(e)recent.push(e.range);}
     const avg=recent.length?Math.round(recent.reduce((s,x)=>s+x,0)/recent.length):null;
     const st=avg?getStatus(avg,v.nominal):'ok';
     const inGarage=!!v.inGarage;
@@ -1591,7 +1620,7 @@ function renderVanStats(){
   const activeVans=S.vans.filter(v=>!v.inGarage);
   if(!activeVans.length){el.innerHTML='';return;}
   el.innerHTML=activeVans.map(v=>{
-    const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage');
+    const entries=S.entries.filter(e=>e.vanId===v.id&&e.range!=null&&!isExcluded(e.date)&&e.mode!=='garage');
     if(!entries.length)return`<div class="card-sm" style="opacity:.5"><div style="font-size:12px;color:#aaa">${v.name} — aucune donnée</div></div>`;
     const avg=Math.round(entries.reduce((s,e)=>s+e.range,0)/entries.length);
     const min=Math.min(...entries.map(e=>e.range));
@@ -1638,9 +1667,9 @@ function renderCoursiers(){
 }
 function renderCoursiersRanking(){
   const impactMap={};
-  S.entries.filter(e=>e.driverId&&e.range!=null&&!isWeekend(e.date)&&e.mode!=='garage').forEach(e=>{
+  S.entries.filter(e=>e.driverId&&e.range!=null&&!isExcluded(e.date)&&e.mode!=='garage').forEach(e=>{
     const d2=addDays(e.date,2);
-    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isExcluded(d2));
     if(!next)return;
     const delta=next.range-e.range;
     if(!impactMap[e.driverId])impactMap[e.driverId]={deltas:[],count:0};
@@ -1748,6 +1777,7 @@ function importData(event){
       S.entries=d.entries||[];
       S.stock=d.stock||[];
       S.stockHistory=d.stockHistory||[];
+      S.holidays=d.holidays||[];
       S.lastMod=d.lastMod||'—';
       saveState('Données importées ✓');
       renderAdmins();renderLogin();
@@ -1770,7 +1800,7 @@ function renderAdmins(){
         </div>
         <div>
           <div style="font-size:14px;color:#f0f0f0;font-weight:600">${a.name}</div>
-          <div style="font-size:10px;color:#555">Administrateur</div>
+          <div style="font-size:10px;color:#aaa">Administrateur</div>
         </div>
       </div>
       <div style="display:flex;gap:5px">
@@ -1778,6 +1808,7 @@ function renderAdmins(){
         ${S.admins.length>1?`<button class="ia-btn del" onclick="deleteAdmin('${a.id}')">✕</button>`:''}
       </div>
     </div>`).join('');
+  renderHolidays();
   // Info panel
   const d=new Date().toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('info-date').textContent=d.charAt(0).toUpperCase()+d.slice(1);
@@ -1822,7 +1853,49 @@ function handlePhoto(event){
 }
 
 // ══════════════════════════════════════════════
-// STOCK — UNIT SELECTOR
+// JOURS FÉRIÉS
+// ══════════════════════════════════════════════
+function renderHolidays(){
+  const el=document.getElementById('holidays-list');
+  if(!el)return;
+  if(!S.holidays||!S.holidays.length){
+    el.innerHTML=`<div style="color:#555;font-size:12px;padding:6px 0">Aucun jour férié enregistré.</div>`;
+    return;
+  }
+  // Sort by date
+  const sorted=[...S.holidays].sort((a,b)=>a.date.localeCompare(b.date));
+  el.innerHTML=sorted.map(h=>`
+    <div class="list-item" style="padding:8px 12px">
+      <div style="flex:1">
+        <div style="font-size:13px;color:#f0f0f0;font-weight:600">📅 ${fmt(h.date)}</div>
+        ${h.label?`<div style="font-size:11px;color:#aaa;margin-top:1px">${h.label}</div>`:''}
+      </div>
+      <button class="ia-btn del" onclick="deleteHoliday('${h.date}')">✕</button>
+    </div>`).join('');
+}
+
+function addHoliday(){
+  const date=document.getElementById('holiday-date').value;
+  const label=document.getElementById('holiday-label').value.trim();
+  if(!date)return toast('Sélectionnez une date');
+  if(!S.holidays)S.holidays=[];
+  if(S.holidays.find(h=>h.date===date))return toast('Ce jour est déjà enregistré');
+  S.holidays.push({date,label});
+  S.holidays.sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('holiday-date').value='';
+  document.getElementById('holiday-label').value='';
+  saveState('Jour férié ajouté ✓');
+  renderHolidays();
+  // Refresh dashboard if active
+  if(document.getElementById('tab-dashboard').style.display!=='none')renderDashboard();
+}
+
+function deleteHoliday(date){
+  S.holidays=S.holidays.filter(h=>h.date!==date);
+  saveState('Jour férié supprimé');
+  renderHolidays();
+  if(document.getElementById('tab-dashboard').style.display!=='none')renderDashboard();
+}
 // ══════════════════════════════════════════════
 function onUnitChange(val){
   const customInput=document.getElementById('art-unit-custom');
@@ -2245,7 +2318,7 @@ function generateReport(){
   if(!selIds.length)return toast('Sélectionnez au moins une camionnette');
 
   const vans=S.vans.filter(v=>selIds.includes(v.id));
-  const allE=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&e.range!=null&&!isWeekend(e.date));
+  const allE=S.entries.filter(e=>e.date>=from&&e.date<=to&&selIds.includes(e.vanId)&&e.range!=null&&!isExcluded(e.date));
 
   let html=`<div class="report-body">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:12px;border-bottom:3px solid #CC0000">
@@ -2291,7 +2364,7 @@ function generateReport(){
   }
 
   vans.forEach(van=>{
-    const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
+    const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isExcluded(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
     const veKm=ve.filter(e=>e.range!=null);
     if(!ve.length)return;
     const avg=veKm.length?Math.round(veKm.reduce((s,e)=>s+e.range,0)/veKm.length):0;
@@ -2326,7 +2399,7 @@ function generateReport(){
 
   setTimeout(()=>{
     vans.forEach(van=>{
-      const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
+      const ve=S.entries.filter(e=>e.vanId===van.id&&e.date>=from&&e.date<=to&&!isExcluded(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
       if(!ve.length)return;
       const ctx=document.getElementById('rc-'+van.id);if(!ctx)return;
       const labels=ve.map(e=>fmt(e.date));
@@ -2352,11 +2425,11 @@ function generateCoursierReport(from,to){
   const cId=document.getElementById('r-coursier-single').value;
   if(!cId)return toast('Sélectionnez un coursier');
   const c=S.coursiers.find(x=>x.id===cId);if(!c)return;
-  const driven=S.entries.filter(e=>e.driverId===cId&&e.range!=null&&e.date>=from&&e.date<=to&&!isWeekend(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
+  const driven=S.entries.filter(e=>e.driverId===cId&&e.range!=null&&e.date>=from&&e.date<=to&&!isExcluded(e.date)).sort((a,b)=>a.date.localeCompare(b.date));
   const impactRows=driven.map(e=>{
     const van=S.vans.find(v=>v.id===e.vanId);
     const d2=addDays(e.date,2);
-    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isExcluded(d2));
     return{date:e.date,van,rangeJ0:e.range,rangeJ2:next?next.range:null,delta:next?next.range-e.range:null};
   }).filter(r=>r.rangeJ2!=null);
   const deltas=impactRows.map(r=>r.delta);
@@ -2394,7 +2467,7 @@ let vdChart=null, cdChart=null;
 function openVanDetail(vanId){
   const van=S.vans.find(v=>v.id===vanId);if(!van)return;
   // All entries for this van, weekdays only, with km
-  const entries=S.entries.filter(e=>e.vanId===vanId&&e.range!=null&&!isWeekend(e.date))
+  const entries=S.entries.filter(e=>e.vanId===vanId&&e.range!=null&&!isExcluded(e.date))
     .sort((a,b)=>a.date.localeCompare(b.date));
   if(!entries.length){toast('Pas encore de données pour cette camionnette');return;}
 
@@ -2521,7 +2594,7 @@ function openCoursierDetail(coursierId){
   const c=S.coursiers.find(x=>x.id===coursierId);if(!c)return;
 
   // Find all entries driven by this coursier (weekdays), and their J+2 impact
-  const driven=S.entries.filter(e=>e.driverId===coursierId&&e.range!=null&&!isWeekend(e.date))
+  const driven=S.entries.filter(e=>e.driverId===coursierId&&e.range!=null&&!isExcluded(e.date))
     .sort((a,b)=>a.date.localeCompare(b.date));
   if(!driven.length){toast(`Pas encore de données pour ${c.fn} ${c.ln}`);return;}
 
@@ -2529,7 +2602,7 @@ function openCoursierDetail(coursierId){
   const impactRows=driven.map(e=>{
     const van=S.vans.find(v=>v.id===e.vanId);
     const d2=addDays(e.date,2);
-    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isWeekend(d2));
+    const next=S.entries.find(x=>x.vanId===e.vanId&&x.date===d2&&x.range!=null&&!isExcluded(d2));
     return{date:e.date,van,rangeJ0:e.range,rangeJ2:next?next.range:null,delta:next?next.range-e.range:null,parked:e.parked};
   }).filter(r=>r.rangeJ2!=null);
 
