@@ -1168,19 +1168,17 @@ function renderDashboardChart(){
   // Show/hide custom date picker
   if(customDates)customDates.style.display=periodSel==='custom'?'flex':'none';
 
-  // Build chartDays — INCLUDE holidays in labels (with null data) for axis continuity
-  // but EXCLUDE them from calculations
+  // Build chartDays — exclude weekends AND holidays completely (no gap, pure continuity)
   const chartDays=[],labels=[],isHolidayDay=[];
   if(periodSel==='custom'){
     const from=fromInput?.value||addDays(tod,-14);
     const to=toInput?.value||tod;
     let cur=from;
     while(cur<=to){
-      if(!isWeekend(cur)){  // include weekdays (even holidays) for continuity
+      if(!isExcluded(cur)){  // isExcluded = weekend OR holiday → skip entirely
         chartDays.push(cur);
-        const h=S.holidays&&S.holidays.find(x=>x.date===cur);
-        labels.push(h?`${fmt(cur)} 📅`:`${fmt(cur)}`);
-        isHolidayDay.push(!!h);
+        labels.push(fmt(cur));
+        isHolidayDay.push(false);
       }
       cur=addDays(cur,1);
     }
@@ -1189,11 +1187,10 @@ function renderDashboardChart(){
     let found=0,i=0;
     while(found<days){
       const d=addDays(tod,-i);
-      if(!isWeekend(d)){
+      if(!isExcluded(d)){
         chartDays.unshift(d);
-        const h=S.holidays&&S.holidays.find(x=>x.date===d);
-        labels.unshift(h?`${fmt(d)} 📅`:`${fmt(d)}`);
-        isHolidayDay.unshift(!!h);
+        labels.unshift(fmt(d));
+        isHolidayDay.unshift(false);
         found++;
       }
       i++;
@@ -1205,16 +1202,15 @@ function renderDashboardChart(){
   const vansToShow=vanFilter==='all'?S.vans:S.vans.filter(v=>v.id===vanFilter);
 
   vansToShow.forEach((van,idx)=>{
-    const data=chartDays.map((d,i)=>{
-      if(isHolidayDay[i])return null;  // holiday = null (gap bridged by spanGaps)
+    const data=chartDays.map(d=>{
       const e=S.entries.find(x=>x.vanId===van.id&&x.date===d&&x.range!=null&&x.mode!=='garage');
       return e?e.range:null;
     });
     datasets.push({
       label:van.name,data,
       borderColor:cols[idx%7],backgroundColor:cols[idx%7]+'18',
-      tension:0.35,spanGaps:true,  // ← KEY: bridge over null (holidays) with continuous line
-      pointRadius:chartDays.map((_,i)=>isHolidayDay[i]?0:(vanFilter==='all'?4:5)),
+      tension:0.35,spanGaps:true,
+      pointRadius:vanFilter==='all'?4:5,
       pointHoverRadius:vanFilter==='all'?6:8,borderWidth:vanFilter==='all'?2:2.5,
       vanId:van.id
     });
